@@ -97,21 +97,23 @@ where
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct Expanded<Tp, Tq>(HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp>>>)
-where
-	Tp: TpType,
-	Tq: TqType;
-
-impl<Tp, Tq> Expanded<Tp, Tq>
+pub struct Expanded<Tp, Tq, Tc>(HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>)
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType;
+
+impl<Tp, Tq, Tc> Expanded<Tp, Tq, Tc>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
 {
 	pub fn new() -> Self {
 		Self(HashMap::new())
 	}
 
-	pub fn from(set: BTreeSet<Qubit<Tq>>, exp: StaticExpr<Placeholder<Tp>>) -> Self {
+	pub fn from(set: BTreeSet<Qubit<Tq>>, exp: StaticExpr<Placeholder<Tp, Tc>>) -> Self {
 		let mut m = HashMap::new();
 		m.insert(set, exp);
 		Self(m)
@@ -123,7 +125,7 @@ where
 		Self(m)
 	}
 
-	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp>, NumberOrFloat>) -> Self {
+	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, NumberOrFloat>) -> Self {
 		Self(
 			self.0
 				.drain()
@@ -154,7 +156,7 @@ where
 		)
 	}
 
-	pub fn get_placeholders(&self) -> BTreeSet<&Placeholder<Tp>> {
+	pub fn get_placeholders(&self) -> BTreeSet<&Placeholder<Tp, Tc>> {
 		let mut ret = BTreeSet::new();
 		for (_, exp) in self.0.iter() {
 			ret = ret
@@ -179,7 +181,7 @@ where
 		ph_feedback: &mut F,
 	) -> (f64, Vec<f64>, Vec<Vec<(usize, f64)>>)
 	where
-		F: FnMut(&Placeholder<Tp>) -> f64,
+		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
 	{
 		let dict = qubits
 			.iter()
@@ -260,38 +262,40 @@ where
 	}
 }
 
-impl<Tp, Tq> std::ops::Deref for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc> std::ops::Deref for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 {
-	type Target = HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp>>>;
+	type Target = HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
-impl<Tp, Tq> std::ops::DerefMut for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc> std::ops::DerefMut for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
 	}
 }
 
-impl<Tp, Tq, Tc> Into<Expr<Placeholder<Tp>, Qubit<Tq>, Tc>> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc> Into<Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 {
-	fn into(self) -> Expr<Placeholder<Tp>, Qubit<Tq>, Tc> {
+	fn into(self) -> Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc> {
 		let mut expr = None;
 		for (set, sexp) in self.0.into_iter() {
-			let e: Expr<Placeholder<Tp>, Qubit<Tq>, Tc> = set
+			let e: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc> = set
 				.into_iter()
 				.fold(sexp.into(), |expr, q| expr * Expr::Binary(q));
 			if let Some(ee) = expr {
@@ -304,10 +308,11 @@ where
 	}
 }
 
-impl<Tp, Tq> From<Tq> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc> From<Tq> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 {
 	fn from(lb: Tq) -> Self {
 		Expanded(
@@ -321,22 +326,24 @@ where
 	}
 }
 
-impl<Tp, Tq> From<StaticExpr<Placeholder<Tp>>> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc> From<StaticExpr<Placeholder<Tp, Tc>>> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 {
-	fn from(e: StaticExpr<Placeholder<Tp>>) -> Self {
+	fn from(e: StaticExpr<Placeholder<Tp, Tc>>) -> Self {
 		let mut ret = HashMap::new();
 		ret.insert(None.into_iter().collect(), e);
 		Expanded(ret)
 	}
 }
 
-impl<Tp, Tq, RHS> AddAssign<RHS> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc, RHS> AddAssign<RHS> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 	RHS: Into<Self>,
 {
 	#[inline]
@@ -351,10 +358,11 @@ where
 		}
 	}
 }
-impl<Tp, Tq, RHS> Add<RHS> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc, RHS> Add<RHS> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 	RHS: Into<Self>,
 {
 	type Output = Self;
@@ -365,10 +373,11 @@ where
 	}
 }
 
-impl<Tp, Tq, RHS> MulAssign<RHS> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc, RHS> MulAssign<RHS> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 	RHS: Into<Self>,
 {
 	#[inline]
@@ -394,10 +403,11 @@ where
 	}
 }
 
-impl<Tp, Tq, RHS> Mul<RHS> for Expanded<Tp, Tq>
+impl<Tp, Tq, Tc, RHS> Mul<RHS> for Expanded<Tp, Tq, Tc>
 where
 	Tp: TpType,
 	Tq: TqType,
+	Tc: TcType,
 	RHS: Into<Self>,
 {
 	type Output = Self;

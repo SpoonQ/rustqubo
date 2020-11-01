@@ -94,9 +94,15 @@ where
 			Self::Float(f) => (StaticExpr::Float(f)).into(),
 			Self::Binary(lb) => (lb).into(),
 			Self::Spin(lb) => (Expr::Binary(lb) * Expr::Number(2) - Expr::Number(1)).to_model(),
-			Self::Constraint { label: lb, expr: e } => (e.clone().to_model()
-				* StaticExpr::Placeholder(Placeholder::Constraint(lb.clone())).into())
-			.add_constraint(lb, *e, Some(Placeholder::Constraint(lb))),
+			Self::Constraint { label: lb, expr: e } => {
+				let ph: Model<Tp, Tq, Tc> =
+					StaticExpr::Placeholder(Placeholder::Constraint(lb.clone())).into();
+				(e.clone().to_model() * ph.clone()).add_constraint(
+					lb.clone(),
+					*e,
+					Some(Placeholder::Constraint(lb)),
+				)
+			}
 			Self::WithPenalty {
 				expr: e,
 				penalty: p,

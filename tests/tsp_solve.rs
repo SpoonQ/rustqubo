@@ -8,7 +8,7 @@ fn run_tsp() {
 	struct TspQubit(usize, usize);
 
 	let cities = 5usize;
-	let H_city = (0..cities).into_iter().fold(Expr::Number(0), |exp, c| {
+	let hmlt_city = (0..cities).into_iter().fold(Expr::Number(0), |exp, c| {
 		let inner = (0..cities)
 			.into_iter()
 			.fold(Expr::Number(-1), |e, o| e + Expr::Binary(TspQubit(c, o)));
@@ -17,7 +17,7 @@ fn run_tsp() {
 			expr: Box::new(inner.clone() * inner),
 		}
 	});
-	let H_order = (0..cities).into_iter().fold(Expr::Number(0), |exp, o| {
+	let hmlt_order = (0..cities).into_iter().fold(Expr::Number(0), |exp, o| {
 		let inner = (0..cities)
 			.into_iter()
 			.fold(Expr::Number(-1), |e, c| e + Expr::Binary(TspQubit(c, o)));
@@ -33,27 +33,27 @@ fn run_tsp() {
 		[3.0, 5.0, 3.0, 0.0, 2.5],
 		[4.5, 7.0, 4.5, 2.5, 0.0],
 	];
-	let mut H_distance = Expr::Number(0);
+	let mut hmlt_distance = Expr::Number(0);
 	for i in (0..cities).into_iter() {
 		for j in (0..cities).into_iter() {
 			for k in (0..cities).into_iter() {
 				let d_ij = Expr::Float(table[i][j]);
-				H_distance = H_distance
+				hmlt_distance = hmlt_distance
 					+ d_ij
 						* Expr::Binary(TspQubit(i, k))
 						* Expr::Binary(TspQubit(j, (k + 1) % cities))
 			}
 		}
 	}
-	let H: Expr<(), _, _> = Expr::Number(700) * (H_city + H_order) + H_distance;
-	let compiled = H.compile();
+	let hmlt: Expr<(), _, _> = Expr::Number(700) * (hmlt_city + hmlt_order) + hmlt_distance;
+	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
-	solver.generations = 1;
-	solver.beta_count = 1000;
+	solver.generations = 20;
+	solver.beta_count = 50;
 	solver.sweeps_per_beta = 1;
 	solver.samples = 1;
 	let (c, qubits, constraints) = solver.solve();
-	println!("{:?} {:?}", qubits, constraints);
+	// println!("{:?} {:?}", qubits, constraints);
 	assert!(constraints.len() == 0);
 }
 
@@ -63,7 +63,6 @@ fn tsp_test() {
 }
 
 #[test]
-#[ignore]
 fn test() {
 	let exp: Expr<(), _, ()> =
 		Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);

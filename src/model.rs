@@ -14,8 +14,8 @@ where
 	Tq: TqType,
 	Tc: TcType,
 {
-	expanded: Expanded<Tp, Tq>,
-	penalties: Expanded<Tp, Tq>,
+	expanded: Expanded<Tp, Tq, Tc>,
+	penalties: Expanded<Tp, Tq, Tc>,
 	constraints: Vec<Constraint<Tp, Tq, Tc>>,
 }
 
@@ -41,7 +41,12 @@ where
 	}
 
 	#[inline]
-	pub fn add_constraint(mut self, lb: Tc, e: Expr<Tp, Tq, Tc>, ph: Option<Tp>) -> Self {
+	pub fn add_constraint(
+		mut self,
+		lb: Tc,
+		e: Expr<Tp, Tq, Tc>,
+		ph: Option<Placeholder<Tp, Tc>>,
+	) -> Self {
 		self.constraints.push(Constraint::new(lb, e, ph));
 		self
 	}
@@ -56,7 +61,7 @@ where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
-	Q: Into<Expanded<Tp, Tq>>,
+	Q: Into<Expanded<Tp, Tq, Tc>>,
 {
 	fn from(q: Q) -> Self {
 		let mut ret = Model::new();
@@ -109,8 +114,8 @@ where
 	Tc: TcType,
 {
 	pub label: Option<Tc>,
-	expr: Expr<Placeholder<Tp>, Qubit<Tq>, Tc>,
-	pub placeholder: Option<Placeholder<Tp>>,
+	expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>,
+	pub placeholder: Option<Placeholder<Tp, Tc>>,
 }
 
 impl<Tp, Tq, Tc> Constraint<Tp, Tq, Tc>
@@ -119,14 +124,18 @@ where
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn new(label: Tc, expr: Expr<Tp, Tq, Tc>, placeholder: Option<Tp>) -> Self {
+	pub fn new(
+		label: Tc,
+		expr: Expr<Tp, Tq, Tc>,
+		placeholder: Option<Placeholder<Tp, Tc>>,
+	) -> Self {
 		let expr = expr.map(&mut |ltp| Placeholder::Placeholder(ltp), &mut |ltq| {
 			Qubit::new(ltq)
 		});
 		Self {
 			label: Some(label),
 			expr: expr,
-			placeholder: placeholder.map(|ltp| Placeholder::Placeholder(ltp)),
+			placeholder,
 		}
 	}
 
@@ -140,7 +149,7 @@ where
 		}
 	}
 
-	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp>, NumberOrFloat>) -> Self {
+	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, NumberOrFloat>) -> Self {
 		self.expr = self.expr.feed_dict(dict);
 		if let Some(p) = &self.placeholder {
 			if let Some(_) = dict.get(p) {
@@ -152,8 +161,8 @@ where
 
 	pub fn from_raw(
 		label: Option<Tc>,
-		expr: Expr<Placeholder<Tp>, Qubit<Tq>, Tc>,
-		placeholder: Option<Placeholder<Tp>>,
+		expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>,
+		placeholder: Option<Placeholder<Tp, Tc>>,
 	) -> Self {
 		Self {
 			label: label,

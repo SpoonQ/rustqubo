@@ -1,4 +1,4 @@
-use crate::{TpType, TqType};
+use crate::{TcType, TpType, TqType};
 
 #[derive(Clone, Debug)]
 pub struct Builder<Tp, Tq>

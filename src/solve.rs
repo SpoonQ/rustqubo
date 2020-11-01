@@ -77,7 +77,7 @@ where
 {
 	/// Solve the model using internal annealer.
 	pub fn solve(&self) -> (f64, HashMap<&Tq, bool>, Vec<&Tc>) {
-		let mut phdict: HashMap<&Placeholder<Tp>, usize> = self
+		let mut phdict: HashMap<&Placeholder<Tp, Tc>, usize> = self
 			.model
 			.get_placeholders()
 			.into_iter()

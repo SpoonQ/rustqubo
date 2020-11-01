@@ -13,7 +13,7 @@ where
 	Tq: TqType,
 	Tc: TcType,
 {
-	expanded: Expanded<Tp, Tq>,
+	expanded: Expanded<Tp, Tq, Tc>,
 	constraints: Vec<Constraint<Tp, Tq, Tc>>,
 	builder: Builder<Tp, Tq>,
 }
@@ -25,10 +25,10 @@ where
 	Tc: TcType,
 {
 	pub(crate) fn new(
-		expanded: Expanded<Tp, Tq>,
+		expanded: Expanded<Tp, Tq, Tc>,
 		constraints: Vec<Constraint<Tp, Tq, Tc>>,
 	) -> Self {
-		let mut builder = Builder::new();
+		let builder = Builder::new();
 		Self {
 			expanded,
 			constraints,
@@ -38,7 +38,7 @@ where
 
 	/// Feed real values to fill the placeholders.
 	pub fn feed_dict(mut self, mut dict: HashMap<Tp, NumberOrFloat>) -> Self {
-		let dict: HashMap<Placeholder<Tp>, NumberOrFloat> = dict
+		let dict: HashMap<Placeholder<Tp, Tc>, NumberOrFloat> = dict
 			.drain()
 			.map(|(k, v)| (Placeholder::Placeholder(k), v))
 			.collect();
@@ -55,7 +55,7 @@ where
 		set: &BTreeSet<Qubit<Tq>>,
 		builder: &mut Builder<Tp, Tq>,
 		p: Option<bool>,
-	) -> (Expanded<Tp, Tq>, Option<Expanded<Tp, Tq>>) {
+	) -> (Expanded<Tp, Tq, Tc>, Option<Expanded<Tp, Tq, Tc>>) {
 		let mut exp = Expanded::new();
 		if let Some(p) = p {
 			let d = set.len();
@@ -211,7 +211,7 @@ where
 		self.expanded.get_qubits()
 	}
 
-	pub fn get_placeholders(&self) -> BTreeSet<&Placeholder<Tp>> {
+	pub fn get_placeholders(&self) -> BTreeSet<&Placeholder<Tp, Tc>> {
 		self.expanded.get_placeholders()
 	}
 
@@ -221,7 +221,7 @@ where
 		ph_feedback: &mut F,
 	) -> (f64, Vec<f64>, Vec<Vec<(usize, f64)>>)
 	where
-		F: FnMut(&Placeholder<Tp>) -> f64,
+		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
 	{
 		self.expanded.generate_qubo(qubits, ph_feedback)
 	}
