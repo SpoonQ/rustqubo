@@ -129,7 +129,7 @@ where
 		expr: Expr<Tp, Tq, Tc>,
 		placeholder: Option<Placeholder<Tp, Tc>>,
 	) -> Self {
-		let expr = expr.map(&mut |ltp| Placeholder::Placeholder(ltp), &mut |ltq| {
+		let expr = expr.map_label(&mut |ltp| Placeholder::Placeholder(ltp), &mut |ltq| {
 			Qubit::new(ltq)
 		});
 		Self {

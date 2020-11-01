@@ -44,14 +44,8 @@ where
 	Float(f64),
 	Binary(Tq), // Qubit represented with +1, 0
 	Spin(Tq),   // Qubit represented with +1, -1
-	Constraint {
-		label: Tc,
-		expr: Box<Expr<Tp, Tq, Tc>>,
-	},
-	WithPenalty {
-		expr: Box<Self>,
-		penalty: Box<Self>,
-	},
+	Constraint { label: Tc, expr: Box<Self> },
+	WithPenalty { expr: Box<Self>, penalty: Box<Self> },
 }
 
 impl<Tp, Tq, Tc> Expr<Tp, Tq, Tc>
@@ -60,6 +54,24 @@ where
 	Tq: TqType,
 	Tc: TcType,
 {
+	pub fn map<F>(self, f: &mut F) -> Self
+	where
+		F: FnMut(Self) -> Self,
+	{
+		match f(self) {
+			Self::Add(a, b) => Self::Add(Box::new(a.map(f)), Box::new(b.map(f))),
+			Self::Mul(a, b) => Self::Mul(Box::new(a.map(f)), Box::new(b.map(f))),
+			Self::Constraint { label, expr } => Self::Constraint {
+				label,
+				expr: Box::new(expr.map(f)),
+			},
+			Self::WithPenalty { expr, penalty } => Self::WithPenalty {
+				expr: Box::new(expr.map(f)),
+				penalty: Box::new(penalty.map(f)),
+			},
+			o => o,
+		}
+	}
 	pub fn feed_dict(self, dict: &HashMap<Tp, NumberOrFloat>) -> Self {
 		match self {
 			Self::Placeholder(p) => {
@@ -190,7 +202,7 @@ where
 		self.to_model().to_compiled().reduce_order(2)
 	}
 
-	pub(crate) fn map<Tpn, Fp, Tqn, Fq>(self, fp: &mut Fp, fq: &mut Fq) -> Expr<Tpn, Tqn, Tc>
+	pub(crate) fn map_label<Tpn, Fp, Tqn, Fq>(self, fp: &mut Fp, fq: &mut Fq) -> Expr<Tpn, Tqn, Tc>
 	where
 		Fp: FnMut(Tp) -> Tpn,
 		Fq: FnMut(Tq) -> Tqn,
@@ -199,8 +211,14 @@ where
 	{
 		match self {
 			Self::Placeholder(lb) => Expr::Placeholder(fp(lb)),
-			Self::Add(lhs, rhs) => Expr::Add(Box::new(lhs.map(fp, fq)), Box::new(rhs.map(fp, fq))),
-			Self::Mul(lhs, rhs) => Expr::Mul(Box::new(lhs.map(fp, fq)), Box::new(rhs.map(fp, fq))),
+			Self::Add(lhs, rhs) => Expr::Add(
+				Box::new(lhs.map_label(fp, fq)),
+				Box::new(rhs.map_label(fp, fq)),
+			),
+			Self::Mul(lhs, rhs) => Expr::Mul(
+				Box::new(lhs.map_label(fp, fq)),
+				Box::new(rhs.map_label(fp, fq)),
+			),
 			Self::Number(n) => Expr::Number(n),
 			Self::Float(f) => Expr::Float(f),
 			Self::Binary(lb) => Expr::Binary(fq(lb)),
