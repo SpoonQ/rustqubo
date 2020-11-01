@@ -3,7 +3,8 @@ use crate::model::Model;
 use crate::wrapper::Placeholder;
 use crate::{TcType, TpType, TqType};
 use std::collections::{BTreeSet, HashMap};
-use std::ops::{Add, Mul, Neg, Sub};
+use std::mem::MaybeUninit;
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 // pub trait Expression<Tp, Tq, Tc>
 // where
@@ -292,6 +293,22 @@ where
 	}
 }
 
+impl<Tp, Tq, Tc> AddAssign for Expr<Tp, Tq, Tc>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
+{
+	#[inline]
+	fn add_assign(&mut self, other: Self) {
+		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
+		std::mem::swap(self, &mut inner);
+		let mut outer = inner.add(other);
+		std::mem::swap(self, &mut outer);
+		std::mem::forget(outer);
+	}
+}
+
 impl<Tp, Tq, Tc> Sub for Expr<Tp, Tq, Tc>
 where
 	Tp: TpType,
@@ -304,6 +321,23 @@ where
 		Self::Add(Box::new(self), Box::new(-other))
 	}
 }
+
+impl<Tp, Tq, Tc> SubAssign for Expr<Tp, Tq, Tc>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
+{
+	#[inline]
+	fn sub_assign(&mut self, other: Self) {
+		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
+		std::mem::swap(self, &mut inner);
+		let mut outer = inner.sub(other);
+		std::mem::swap(self, &mut outer);
+		std::mem::forget(outer);
+	}
+}
+
 impl<Tp, Tq, Tc> Mul for Expr<Tp, Tq, Tc>
 where
 	Tp: TpType,
@@ -314,6 +348,21 @@ where
 	#[inline]
 	fn mul(self, other: Self) -> Self::Output {
 		Self::Mul(Box::new(self), Box::new(other))
+	}
+}
+impl<Tp, Tq, Tc> MulAssign for Expr<Tp, Tq, Tc>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
+{
+	#[inline]
+	fn mul_assign(&mut self, other: Self) {
+		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
+		std::mem::swap(self, &mut inner);
+		let mut outer = inner.mul(other);
+		std::mem::swap(self, &mut outer);
+		std::mem::forget(outer);
 	}
 }
 
