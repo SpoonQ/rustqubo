@@ -47,9 +47,6 @@ where
 	Ancilla(usize),
 }
 
-// impl<Tq> TqType for Qubit<Tq> where Tq: TqType {}
-// impl<Tq> crate::LabelType for Qubit<Tq> where Tq: TqType {}
-
 impl<Tq> Qubit<Tq>
 where
 	Tq: TqType,
@@ -59,26 +56,12 @@ where
 	}
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-pub enum Placeholder<Tp>
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
+pub enum Placeholder<Tp, Tc>
 where
 	Tp: TpType,
+	Tc: TcType,
 {
 	Placeholder(Tp),
-	Internal,
-}
-
-// impl<Tp> TpType for Placeholder<Tp> where Tp: TpType {}
-// impl<Tp> crate::LabelType for Placeholder<Tp> where Tp: TpType {}
-
-impl<Tp> std::fmt::Debug for Placeholder<Tp>
-where
-	Tp: TpType,
-{
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Placeholder(p) => p.fmt(f),
-			Self::Internal => f.write_str("(Internal)"),
-		}
-	}
+	Constraint(Tc),
 }

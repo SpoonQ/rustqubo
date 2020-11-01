@@ -41,8 +41,8 @@ where
 	}
 
 	#[inline]
-	pub fn add_constraint(mut self, lb: Tc, e: Expr<Tp, Tq, Tc>) -> Self {
-		self.constraints.push(Constraint::new(lb, e, None));
+	pub fn add_constraint(mut self, lb: Tc, e: Expr<Tp, Tq, Tc>, ph: Option<Tp>) -> Self {
+		self.constraints.push(Constraint::new(lb, e, ph));
 		self
 	}
 

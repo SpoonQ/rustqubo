@@ -28,10 +28,11 @@ where
 		expanded: Expanded<Tp, Tq>,
 		constraints: Vec<Constraint<Tp, Tq, Tc>>,
 	) -> Self {
+		let mut builder = Builder::new();
 		Self {
 			expanded,
 			constraints,
-			builder: Builder::new(),
+			builder,
 		}
 	}
 
