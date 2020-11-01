@@ -35,11 +35,11 @@ where
 		Self {
 			model,
 			qubits,
-			samples: 8,
+			samples: 8, // 8
 			// processes: 1,
-			generations: 100,
-			beta_count: 1000,
-			sweeps_per_beta: 300,
+			generations: 10,     // 10
+			beta_count: 100,     // 100
+			sweeps_per_beta: 30, // 30
 			coeff_strength: 50.0,
 		}
 	}
@@ -158,9 +158,9 @@ where
 	}
 
 	fn generate_beta_schedule(beta_min: f64, beta_max: f64, count: usize) -> Vec<f64> {
-		let r = f64::ln(beta_min / beta_max) / (count as f64 - 1.0);
+		let r = f64::ln(beta_max / beta_min) / (count as f64 - 1.0);
 		(0..count)
-			.map(|index| beta_max * f64::exp(index as f64 * r))
+			.map(|index| beta_min * f64::exp(index as f64 * r))
 			.collect()
 	}
 

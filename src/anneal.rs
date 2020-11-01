@@ -43,6 +43,19 @@ impl QubitState {
 	}
 }
 
+impl std::fmt::Debug for QubitState {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		for i in 0..self.len {
+			if self.get(i) {
+				f.write_str("1")?;
+			} else {
+				f.write_str("0")?;
+			}
+		}
+		Ok(())
+	}
+}
+
 #[derive(Clone)]
 pub struct SimpleAnnealer {
 	pub sweeps_per_round: usize,
@@ -83,11 +96,14 @@ impl SimpleAnnealer {
 			for _ in 0..self.sweeps_per_round {
 				let threshold = 44.36142 / beta;
 				for i in 0..state.len() {
+					// println!("{:} {:}", i, beta);
+					// println!("{:?}", &state);
+					// println!("{:?}", &energy_diffs);
 					let ed = energy_diffs[i];
 					if ed > threshold {
 						continue;
 					}
-					if ed <= 0.0 || f64::exp(ed * beta) > random.gen_range(0.0, 1.0) {
+					if ed <= 0.0 || f64::exp(-ed * beta) > random.gen_range(0.0, 1.0) {
 						// accept
 						state.flip(i);
 						let stat = state.get(i);
