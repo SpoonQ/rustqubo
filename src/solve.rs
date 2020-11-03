@@ -33,15 +33,16 @@ where
 {
 	pub fn new(model: &'a CompiledModel<Tp, Tq, Tc>) -> Self {
 		let qubits = model.get_qubits().into_iter().collect::<Vec<_>>();
+		println!("{:}", rayon::current_num_threads());
 		Self {
 			model,
 			qubits,
-			samples: 8, // 8
+			samples: rayon::current_num_threads(),
 			// processes: 1,
 			iterations: 10,
-			generations: 30,     // 10
-			beta_count: 100,     // 100
-			sweeps_per_beta: 30, // 30
+			generations: 30,
+			beta_count: 100,
+			sweeps_per_beta: 30,
 			coeff_strength: 50.0,
 		}
 	}
