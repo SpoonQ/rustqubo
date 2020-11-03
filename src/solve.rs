@@ -33,7 +33,6 @@ where
 {
 	pub fn new(model: &'a CompiledModel<Tp, Tq, Tc>) -> Self {
 		let qubits = model.get_qubits().into_iter().collect::<Vec<_>>();
-		println!("{:}", rayon::current_num_threads());
 		Self {
 			model,
 			qubits,
