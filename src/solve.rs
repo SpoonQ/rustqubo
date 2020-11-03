@@ -37,11 +37,24 @@ where
 			qubits,
 			samples: 8, // 8
 			// processes: 1,
-			generations: 10,     // 10
+			generations: 30,     // 10
 			beta_count: 100,     // 100
 			sweeps_per_beta: 30, // 30
 			coeff_strength: 50.0,
 		}
+	}
+
+	pub fn get_qubits(&self) -> Vec<&'a Tq> {
+		self.qubits
+			.iter()
+			.filter_map(|q| {
+				if let Qubit::Qubit(q) = q {
+					Some(q)
+				} else {
+					None
+				}
+			})
+			.collect()
 	}
 
 	fn calculate_energy(
@@ -140,6 +153,7 @@ where
 					constraint_labels.push(label);
 				}
 			}
+			let is_satisfied = constraint_labels.len() == 0;
 			ret = Some((
 				energy,
 				ans.into_iter()
@@ -153,6 +167,9 @@ where
 					.collect(),
 				constraint_labels,
 			));
+			if is_satisfied {
+				break;
+			}
 		}
 		ret.unwrap()
 	}
