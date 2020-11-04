@@ -31,6 +31,7 @@ jobs:
 
             - name: Deploy Documentation
               env:
+                INPUT_KEEPFILES: true
                 ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
                 EXTERNAL_REPOSITORY: SpoonQ/spoonq.github.io
                 PUBLISH_BRANCH: main
