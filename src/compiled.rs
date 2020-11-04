@@ -113,6 +113,7 @@ where
 					}
 				}
 			} else {
+				// a * x_1 * ... * x_d = min a * w  * { x_1 * ... * x_d - (d - 1) }  (a < 0)
 				let w = builder.ancilla();
 				for x in set.iter() {
 					exp.insert(
@@ -122,11 +123,13 @@ where
 				}
 				exp.insert(
 					Some(w).into_iter().collect(),
-					StaticExpr::Number((1 - d) as i32),
+					StaticExpr::Number(1 - d as i32),
 				);
 			}
 			(exp, None)
 		} else {
+			// Cannot determine sign of a
+			// x * y -> min{1 + w * (3 - 2x - 2y)}, xyz = a * w
 			if let &[x, y] = &set.iter().take(2).collect::<Vec<&Qubit<Tq>>>() as &[&Qubit<Tq>] {
 				let w = builder.ancilla();
 				exp.insert(Some(w.clone()).into_iter().collect(), StaticExpr::Number(3));
@@ -160,11 +163,6 @@ where
 	}
 
 	pub(crate) fn reduce_order(mut self, max_order: usize) -> Self {
-		// 3次 -> 1次
-		// xyzw -> min{1 + 2a(3.5 - x - y - z - w)}
-		// xyz -> min{1 + 2a(2.5 - x - y - z)}, xyz = a
-		// xy -> min{1 + a(3 - 2x - 2y)}, xyz = a
-		// xy -> min(3w - 2w(x+y) + xy)
 		let mut builder = self.builder.clone();
 		while self.expanded.get_order() > max_order {
 			let mut m = self.expanded.count_qubit_subsets(max_order, 2, None);
