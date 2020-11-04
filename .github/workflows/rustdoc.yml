@@ -33,7 +33,7 @@ jobs:
               env:
                 ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
                 PUBLISH_REPOSITORY: SpoonQ/spoonq.github.io
-                PUBLISH_BRANCH: gh-pages
+                PUBLISH_BRANCH: main
                 PUBLISH_DIR: ./target/doc
                 SCRIPT_MODE: true
               run: |
