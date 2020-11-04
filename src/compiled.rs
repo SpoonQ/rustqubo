@@ -61,10 +61,14 @@ where
 			let d = set.len();
 			let xs = set.iter().collect::<Vec<_>>();
 			if p {
+				// The following formulas are from http://www.f.waseda.jp/hfs/miru2009.pdf
+				// (a * x_1 * ... * x_d) is replaced to ... (a > 0)
 				let n = (d - 1) / 2;
 				if d % 2 == 0 {
+					// sum{i=0 -> n-1} w_i(-2 S1 + 4(i + 1) - 1)
 					for i in 0..n {
 						let w = builder.ancilla();
+						// -2 S1 = sum{n=0 -> d-1} -2 x_i
 						for j in 0..d {
 							exp.insert(
 								vec![w.clone(), xs[j].clone()].into_iter().collect(),
@@ -73,12 +77,14 @@ where
 						}
 						exp.insert(
 							Some(w).into_iter().collect(),
-							StaticExpr::Number((4 * i - 1) as i32),
+							StaticExpr::Number((4 * (i + 1) - 1) as i32),
 						);
 					}
 				} else {
 					{
+						// w_n(-S1 + 2n - 1)
 						let wn = builder.ancilla();
+						// - S1 = sum{n=0 -> d-1} -x_i
 						for j in 0..d {
 							exp.insert(
 								vec![wn.clone(), xs[j].clone()].into_iter().collect(),
@@ -90,8 +96,10 @@ where
 							StaticExpr::Number((2 * n - 1) as i32),
 						);
 					}
+					// sum{i=0 -> n-2} w_i(-2S1 + 4(i + 1) - 1)
 					for i in 0..n - 1 {
 						let w = builder.ancilla();
+						// -2 S1 = sum{n=0 -> d-1} -2 x_i
 						for j in 0..d {
 							exp.insert(
 								vec![w.clone(), xs[j].clone()].into_iter().collect(),
@@ -100,10 +108,11 @@ where
 						}
 						exp.insert(
 							Some(w).into_iter().collect(),
-							StaticExpr::Number((4 * i - 1) as i32),
+							StaticExpr::Number((4 * (i + 1) - 1) as i32),
 						);
 					}
 				}
+				// sum{i=0 -> d-2} sum{j=i+1 -> d-1} x_ix_j
 				for i in 0..d {
 					for j in i + 1..d {
 						exp.insert(
