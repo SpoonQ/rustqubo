@@ -249,6 +249,18 @@ mod external_apis {
 	extern crate cpython;
 	use cpython::{PyDict, PyList, PyResult, Python};
 
+	#[derive(Debug)]
+	pub enum ApiError {
+		Auth(String),
+	}
+
+	impl std::fmt::Display for ApiError {
+		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+			std::fmt::Debug::fmt(self, f)
+		}
+	}
+	impl std::error::Error for ApiError {}
+
 	#[cfg(features = "d-wave")]
 	mod d_wave {
 
