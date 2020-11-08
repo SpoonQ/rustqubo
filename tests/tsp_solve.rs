@@ -49,8 +49,6 @@ fn run_tsp() {
 	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
 	solver.generations = 20;
-	solver.beta_count = 50;
-	solver.sweeps_per_beta = 1;
 	solver.samples = 1;
 	let (c, qubits, constraints) = solver.solve();
 	// println!("{:?} {:?}", qubits, constraints);

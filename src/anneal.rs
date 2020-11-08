@@ -66,26 +66,111 @@ impl std::fmt::Debug for QubitState {
 	}
 }
 
-#[derive(Clone)]
-pub struct SimpleAnnealer {
-	pub sweeps_per_round: usize,
-	pub beta_schedule: Vec<f64>,
+pub trait AnnealerInfo: std::marker::Send + std::marker::Sync {
+	type AnnealerType: Annealer;
+	fn build(&self, h: Vec<f64>, neighbors: Vec<Vec<(usize, f64)>>) -> Self::AnnealerType;
 }
 
-impl SimpleAnnealer {
-	pub fn new(sweeps_per_round: usize, beta_schedule: Vec<f64>) -> Self {
-		Self {
-			sweeps_per_round,
-			beta_schedule,
+pub trait Annealer: std::marker::Send + std::marker::Sync {
+	fn anneal<T: Rng>(&self, r: &mut T) -> QubitState;
+}
+
+#[derive(Clone)]
+pub enum BetaType {
+	Count(usize),
+	CountRange(usize, f64, f64),
+	Schedule(Vec<f64>),
+}
+
+impl BetaType {
+	fn generate_beta_range(h: &[f64], neighbors: &[Vec<(usize, f64)>]) -> (f64, f64) {
+		let eg_min = h
+			.iter()
+			.chain(neighbors.iter().flat_map(|sl| sl.iter().map(|(_, f)| f)))
+			.map(|f| f64::abs(*f))
+			.fold(0.0 / 0.0 as f64, |p: f64, n: f64| n.max(p));
+		let eg_max = h
+			.iter()
+			.enumerate()
+			.map(|(index, h)| {
+				*h + neighbors[index]
+					.iter()
+					.map(|(_, f)| f64::abs(*f) as f64)
+					.sum::<f64>() as f64
+			})
+			.fold(0.0 / 0.0 as f64, |p: f64, n: f64| n.max(p));
+		if eg_max.is_finite() && eg_min.is_finite() {
+			(f64::ln(2.0) / eg_max, f64::ln(100.0) / eg_min)
+		} else {
+			(0.1, 1.0)
 		}
 	}
 
-	pub fn run<T: Rng>(
+	fn generate_beta_schedule(beta_min: f64, beta_max: f64, count: usize) -> Vec<f64> {
+		let r = f64::ln(beta_max / beta_min) / (count as f64 - 1.0);
+		(0..count)
+			.map(|index| beta_min * f64::exp(index as f64 * r))
+			.collect()
+	}
+
+	pub fn generate_schedule(&self, h: &[f64], neighbors: &[Vec<(usize, f64)>]) -> Vec<f64> {
+		match self {
+			BetaType::Schedule(v) => v.clone(),
+			BetaType::Count(count) | BetaType::CountRange(count, _, _) => {
+				let (min, max) = if let BetaType::CountRange(_, min, max) = self {
+					(*min, *max)
+				} else {
+					Self::generate_beta_range(h, neighbors)
+				};
+				Self::generate_beta_schedule(min, max, *count)
+			}
+		}
+	}
+}
+
+#[derive(Clone)]
+pub struct InternalAnnealerInfo {
+	pub sweeps_per_round: usize,
+	pub beta: BetaType,
+}
+
+#[derive(Clone)]
+pub struct InternalAnnealer {
+	pub sweeps_per_round: usize,
+	pub beta_schedule: Vec<f64>,
+	h: Vec<f64>,
+	neighbors: Vec<Vec<(usize, f64)>>,
+}
+
+impl InternalAnnealerInfo {
+	pub fn new() -> Self {
+		Self {
+			sweeps_per_round: 30,
+			beta: BetaType::Count(100),
+		}
+	}
+}
+
+impl AnnealerInfo for InternalAnnealerInfo {
+	type AnnealerType = InternalAnnealer;
+	fn build(&self, h: Vec<f64>, neighbors: Vec<Vec<(usize, f64)>>) -> Self::AnnealerType {
+		let beta_schedule = self.beta.generate_schedule(&h, &neighbors);
+		InternalAnnealer {
+			sweeps_per_round: self.sweeps_per_round,
+			h,
+			neighbors,
+			beta_schedule,
+		}
+	}
+}
+
+impl InternalAnnealer {
+	fn run<T: Rng>(
 		&self,
 		state: &mut QubitState,
 		random: &mut T,
 		h: &[f64],
-		neighbors: &[&[(usize, f64)]],
+		neighbors: &[Vec<(usize, f64)>],
 	) {
 		assert_eq!(state.len(), neighbors.len());
 		assert_eq!(state.len(), h.len());
@@ -106,9 +191,6 @@ impl SimpleAnnealer {
 			for _ in 0..self.sweeps_per_round {
 				let threshold = 44.36142 / beta;
 				for i in 0..state.len() {
-					// println!("{:} {:}", i, beta);
-					// println!("{:?}", &state);
-					// println!("{:?}", &energy_diffs);
 					let ed = energy_diffs[i];
 					if ed > threshold {
 						continue;
@@ -119,7 +201,7 @@ impl SimpleAnnealer {
 							state.flip_unchecked(i);
 						}
 						let stat = unsafe { state.get_unchecked(i) };
-						for (j, weight) in unsafe { *neighbors.get_unchecked(i) }.iter() {
+						for (j, weight) in unsafe { neighbors.get_unchecked(i) }.iter() {
 							if stat != unsafe { state.get_unchecked(*j) } {
 								energy_diffs[*j] += weight;
 							} else {
@@ -133,3 +215,48 @@ impl SimpleAnnealer {
 		}
 	}
 }
+
+impl Annealer for InternalAnnealer {
+	fn anneal<T: Rng>(&self, r: &mut T) -> QubitState {
+		let mut state = QubitState::new_random(self.h.len(), r);
+		self.run(&mut state, r, &self.h, &self.neighbors);
+		state
+	}
+}
+
+#[cfg(features = "external-apis")]
+mod external_apis {
+	extern crate cpython;
+	use cpython::{PyDict, PyList, PyResult, Python};
+
+	#[cfg(features = "d-wave")]
+	mod d_wave {
+		pub struct DWaveAnnealer {
+			adapter: PythonAdapter,
+			pub endpoint: String,
+			pub token: Option<String>,
+			pub machine: String,
+			pub num_reads: usize,
+		}
+
+		impl DWaveAnnealer {
+			pub fn new() -> Self {
+				Self {
+					adapter: PythonAdapter::new(),
+					endpoint: "https://cloud.dwavesys.com/sapi".to_owned(),
+					token: None,
+					machine: "DW_2000Q_5".to_owned(),
+					num_reads: 100,
+				}
+			}
+
+			pub fn run(&self, h: &[f64], neighbors: &[&[(usize, f64)]]) {}
+		}
+	}
+
+	#[cfg(features = "d-wave")]
+	pub use self::d_wave::*;
+}
+
+#[cfg(features = "external-apis")]
+pub use self::external_apis::*;
