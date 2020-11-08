@@ -25,21 +25,31 @@ impl QubitState {
 		self.len
 	}
 
+	#[allow(unused)]
 	#[inline]
 	pub fn get(&self, loc: usize) -> bool {
 		let bytesize = std::mem::size_of::<u8>();
 		assert!(loc < self.len);
-		// debug_assert!(
-		// 	loc < self.len,
-		// 	format_args!("Location {} out of len {}", loc, self.len)
-		// );
 		(self.state[loc / bytesize] & BITVALUES[loc % bytesize]) > 0
 	}
 
 	#[inline]
+	pub unsafe fn get_unchecked(&self, loc: usize) -> bool {
+		let bytesize = std::mem::size_of::<u8>();
+		(self.state.get_unchecked(loc / bytesize) & BITVALUES.get_unchecked(loc % bytesize)) > 0
+	}
+
+	#[allow(unused)]
+	#[inline]
 	pub fn flip(&mut self, loc: usize) {
 		let bytesize = std::mem::size_of::<u8>();
 		self.state[loc / bytesize] ^= BITVALUES[loc % bytesize];
+	}
+
+	#[inline]
+	pub unsafe fn flip_unchecked(&mut self, loc: usize) {
+		let bytesize = std::mem::size_of::<u8>();
+		*self.state.get_unchecked_mut(loc / bytesize) ^= BITVALUES.get_unchecked(loc % bytesize);
 	}
 }
 
@@ -81,13 +91,13 @@ impl SimpleAnnealer {
 		assert_eq!(state.len(), h.len());
 		let mut energy_diffs = Vec::with_capacity(state.len());
 		for (i, ngs) in neighbors.iter().enumerate() {
-			let mut energy_diff = h[i];
+			let mut energy_diff = unsafe { *h.get_unchecked(i) };
 			for (j, weight) in ngs.iter() {
-				if state.get(*j) {
+				if unsafe { state.get_unchecked(*j) } {
 					energy_diff += weight;
 				}
 			}
-			if state.get(i) {
+			if unsafe { state.get_unchecked(i) } {
 				energy_diff = -energy_diff;
 			}
 			energy_diffs.push(energy_diff);
@@ -105,10 +115,12 @@ impl SimpleAnnealer {
 					}
 					if ed <= 0.0 || f64::exp(-ed * beta) > random.gen_range(0.0, 1.0) {
 						// accept
-						state.flip(i);
-						let stat = state.get(i);
-						for (j, weight) in neighbors[i].iter() {
-							if stat != state.get(*j) {
+						unsafe {
+							state.flip_unchecked(i);
+						}
+						let stat = unsafe { state.get_unchecked(i) };
+						for (j, weight) in unsafe { *neighbors.get_unchecked(i) }.iter() {
+							if stat != unsafe { state.get_unchecked(*j) } {
 								energy_diffs[*j] += weight;
 							} else {
 								energy_diffs[*j] -= weight;
