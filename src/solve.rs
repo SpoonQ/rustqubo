@@ -99,7 +99,9 @@ where
 	Tc: TcType + Send + Sync,
 {
 	/// Solve the model using internal annealer.
-	pub fn solve(&self) -> (f64, HashMap<&Tq, bool>, Vec<&Tc>) {
+	pub fn solve(
+		&self,
+	) -> Result<(f64, HashMap<&Tq, bool>, Vec<&Tc>), <T as AnnealerInfo>::ErrorType> {
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
 		for _ in 0..self.iterations {
@@ -124,59 +126,70 @@ where
 					.collect::<Vec<_>>()
 					.par_iter()
 					.map(|(h, neighbors)| {
-						let annealer = self.annealer_info.build(h.clone(), neighbors.clone());
 						let mut r = SmallRng::from_rng(OsRng).unwrap();
-						let state = annealer.anneal(&mut r);
-						(Self::calculate_energy(&state, c, &h, neighbors), state)
+						match self.annealer_info.build(h.clone(), neighbors.clone()) {
+							Ok(annealer) => annealer.anneal(&mut r).map(|state| {
+								(Self::calculate_energy(&state, c, &h, neighbors), state)
+							}),
+							Err(e) => Err(e),
+						}
 					})
 					.collect::<Vec<_>>();
-				let max = fut_ret.iter().fold(0.0 / 0.0, |m, v| v.0.max(m));
-				let (energy, state) = fut_ret
-					.into_iter()
-					.filter(|(e, _)| *e == max)
-					.next()
-					.unwrap();
-				if old_energy < energy {
-					continue;
-				}
-				old_energy = energy;
-				let ans: HashMap<&Qubit<Tq>, bool> = self
-					.qubits
-					.iter()
-					.enumerate()
-					.map(|(i, q)| (*q, state.get(i)))
-					.collect();
-				let mut constraint_labels = Vec::new();
-				for c in self.model.get_unsatisfied_constraints(&ans) {
-					if let Some(ph) = &c.placeholder {
-						if let Some(point) = phdict.get_mut(ph) {
-							*point += 1;
-							size += 1;
+				let max =
+					fut_ret
+						.iter()
+						.fold(0.0 / 0.0, |m, v| if let Ok(v) = v { v.0.max(m) } else { m });
+				if max.is_infinite() {
+					return Err(fut_ret.into_iter().next().unwrap().unwrap_err());
+				} else {
+					let (energy, state) = fut_ret
+						.into_iter()
+						.filter(|r| if let Ok((e, _)) = r { *e == max } else { false })
+						.next()
+						.unwrap()
+						.unwrap();
+					if old_energy < energy {
+						continue;
+					}
+					old_energy = energy;
+					let ans: HashMap<&Qubit<Tq>, bool> = self
+						.qubits
+						.iter()
+						.enumerate()
+						.map(|(i, q)| (*q, state.get(i)))
+						.collect();
+					let mut constraint_labels = Vec::new();
+					for c in self.model.get_unsatisfied_constraints(&ans) {
+						if let Some(ph) = &c.placeholder {
+							if let Some(point) = phdict.get_mut(ph) {
+								*point += 1;
+								size += 1;
+							}
+						}
+						if let Some(label) = &c.label {
+							constraint_labels.push(label);
 						}
 					}
-					if let Some(label) = &c.label {
-						constraint_labels.push(label);
+					let is_satisfied = constraint_labels.len() == 0;
+					ret = Some((
+						energy,
+						ans.into_iter()
+							.filter_map(|(q, b)| {
+								if let Qubit::Qubit(q) = q {
+									Some((q, b))
+								} else {
+									None
+								}
+							})
+							.collect(),
+						constraint_labels,
+					));
+					if is_satisfied {
+						return Ok(ret.unwrap());
 					}
-				}
-				let is_satisfied = constraint_labels.len() == 0;
-				ret = Some((
-					energy,
-					ans.into_iter()
-						.filter_map(|(q, b)| {
-							if let Qubit::Qubit(q) = q {
-								Some((q, b))
-							} else {
-								None
-							}
-						})
-						.collect(),
-					constraint_labels,
-				));
-				if is_satisfied {
-					return ret.unwrap();
 				}
 			}
 		}
-		ret.unwrap()
+		Ok(ret.unwrap())
 	}
 }

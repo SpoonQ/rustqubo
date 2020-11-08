@@ -66,13 +66,28 @@ impl std::fmt::Debug for QubitState {
 	}
 }
 
-pub trait AnnealerInfo: std::marker::Send + std::marker::Sync {
-	type AnnealerType: Annealer;
-	fn build(&self, h: Vec<f64>, neighbors: Vec<Vec<(usize, f64)>>) -> Self::AnnealerType;
+#[derive(Debug)]
+pub struct NullError;
+impl std::fmt::Display for NullError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("NullError").finish()
+	}
 }
 
-pub trait Annealer: std::marker::Send + std::marker::Sync {
-	fn anneal<T: Rng>(&self, r: &mut T) -> QubitState;
+impl std::error::Error for NullError {}
+
+pub trait AnnealerInfo: std::marker::Send + std::marker::Sync {
+	type AnnealerType: Annealer<Self::ErrorType>;
+	type ErrorType: std::error::Error + std::marker::Send + std::marker::Sync;
+	fn build(
+		&self,
+		h: Vec<f64>,
+		neighbors: Vec<Vec<(usize, f64)>>,
+	) -> Result<Self::AnnealerType, Self::ErrorType>;
+}
+
+pub trait Annealer<TErr>: std::marker::Send + std::marker::Sync {
+	fn anneal<T: Rng>(&self, r: &mut T) -> Result<QubitState, TErr>;
 }
 
 #[derive(Clone)]
@@ -136,8 +151,8 @@ pub struct InternalAnnealerInfo {
 
 #[derive(Clone)]
 pub struct InternalAnnealer {
-	pub sweeps_per_round: usize,
-	pub beta_schedule: Vec<f64>,
+	sweeps_per_round: usize,
+	beta_schedule: Vec<f64>,
 	h: Vec<f64>,
 	neighbors: Vec<Vec<(usize, f64)>>,
 }
@@ -153,14 +168,19 @@ impl InternalAnnealerInfo {
 
 impl AnnealerInfo for InternalAnnealerInfo {
 	type AnnealerType = InternalAnnealer;
-	fn build(&self, h: Vec<f64>, neighbors: Vec<Vec<(usize, f64)>>) -> Self::AnnealerType {
+	type ErrorType = NullError;
+	fn build(
+		&self,
+		h: Vec<f64>,
+		neighbors: Vec<Vec<(usize, f64)>>,
+	) -> Result<Self::AnnealerType, <Self as AnnealerInfo>::ErrorType> {
 		let beta_schedule = self.beta.generate_schedule(&h, &neighbors);
-		InternalAnnealer {
+		Ok(InternalAnnealer {
 			sweeps_per_round: self.sweeps_per_round,
 			h,
 			neighbors,
 			beta_schedule,
-		}
+		})
 	}
 }
 
@@ -216,11 +236,11 @@ impl InternalAnnealer {
 	}
 }
 
-impl Annealer for InternalAnnealer {
-	fn anneal<T: Rng>(&self, r: &mut T) -> QubitState {
+impl Annealer<NullError> for InternalAnnealer {
+	fn anneal<T: Rng>(&self, r: &mut T) -> Result<QubitState, NullError> {
 		let mut state = QubitState::new_random(self.h.len(), r);
 		self.run(&mut state, r, &self.h, &self.neighbors);
-		state
+		Ok(state)
 	}
 }
 
@@ -231,26 +251,57 @@ mod external_apis {
 
 	#[cfg(features = "d-wave")]
 	mod d_wave {
-		pub struct DWaveAnnealer {
-			adapter: PythonAdapter,
+
+		#[derive(Clone)]
+		pub struct DWaveAnnealerInfo {
 			pub endpoint: String,
 			pub token: Option<String>,
 			pub machine: String,
 			pub num_reads: usize,
+			pub beta: BetaType,
 		}
 
-		impl DWaveAnnealer {
+		impl DWaveAnnealerInfo {
 			pub fn new() -> Self {
 				Self {
-					adapter: PythonAdapter::new(),
 					endpoint: "https://cloud.dwavesys.com/sapi".to_owned(),
 					token: None,
 					machine: "DW_2000Q_5".to_owned(),
 					num_reads: 100,
+					beta: BetaType::Count(100),
 				}
 			}
+		}
 
-			pub fn run(&self, h: &[f64], neighbors: &[&[(usize, f64)]]) {}
+		impl AnnealerInfo for DWaveAnnealerInfo {
+			type AnnealerType = DWaveAnnealer;
+			type ErrorType = NullError;
+			fn build(
+				&self,
+				h: Vec<f64>,
+				neighbors: Vec<Vec<(usize, f64)>>,
+			) -> Result<Self::AnnealerType, NullError> {
+				let beta_schedule = self.beta.generate_schedule(&h, &neighbors);
+				DWaveAnnealer {
+					h_ising: h,
+					neighbors_ising: neighbors, // FIXME:
+					beta_schedule,
+					config: self.clone(),
+				}
+			}
+		}
+
+		pub struct DWaveAnnealer {
+			beta_schedule: Vec<f64>,
+			h_ising: Vec<f64>,
+			neighbors_ising: Vec<Vec<(usize, f64)>>,
+			config: DWaveAnnealerInfo,
+		}
+
+		impl Annealer<NullError> for InternalAnnealer {
+			fn anneal<T: Rng>(&self, _r: &mut T) -> Result<QubitState, NullError> {
+				unimplemented!();
+			}
 		}
 	}
 
