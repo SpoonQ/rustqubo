@@ -431,6 +431,22 @@ fn expand_simplify_test() {
 	)
 }
 
+impl<Tp, Tc> StaticExpr<Placeholder<Tp, Tc>>
+where
+	Tp: TpType,
+	Tc: TcType,
+{
+	pub(crate) fn drop_placeholder(self) -> StaticExpr<Placeholder<(), Tc>> {
+		match self {
+			Self::Placeholder(p) => StaticExpr::Placeholder(p.drop_placeholder()),
+			Self::Add(v) => StaticExpr::Add(v.into_iter().map(|a| a.drop_placeholder()).collect()),
+			Self::Mul(v) => StaticExpr::Mul(v.into_iter().map(|a| a.drop_placeholder()).collect()),
+			Self::Number(a) => StaticExpr::Number(a),
+			Self::Float(a) => StaticExpr::Float(a),
+		}
+	}
+}
+
 impl<Tp> StaticExpr<Tp>
 where
 	Tp: TpType,

@@ -139,6 +139,18 @@ where
 		}
 	}
 
+	pub(crate) fn drop_placeholder(self) -> Constraint<(), Tq, Tc> {
+		let expr = self
+			.expr
+			.map_label(&mut |lb| lb.drop_placeholder(), &mut std::convert::identity);
+		let placeholder = self.placeholder.map(|p| p.drop_placeholder());
+		Constraint {
+			label: self.label,
+			expr,
+			placeholder,
+		}
+	}
+
 	pub fn is_satisfied(&self, map: &HashMap<&Qubit<Tq>, bool>) -> bool {
 		if let Some(i) = self.expr.calculate_i(map) {
 			i == 0

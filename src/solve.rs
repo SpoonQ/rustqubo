@@ -1,19 +1,18 @@
 use crate::anneal::{Annealer, AnnealerInfo, InternalAnnealerInfo, QubitState};
 use crate::compiled::CompiledModel;
 use crate::wrapper::{Placeholder, Qubit};
-use crate::{TcType, TpType, TqType};
+use crate::{TcType, TqType};
 use rand::rngs::{OsRng, SmallRng};
 use rand::SeedableRng;
 use rayon::prelude::*;
 use std::collections::HashMap;
 
-pub struct SimpleSolver<'a, Tp, Tq, Tc, T: AnnealerInfo>
+pub struct SimpleSolver<'a, Tq, Tc, T: AnnealerInfo>
 where
-	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 {
-	model: &'a CompiledModel<Tp, Tq, Tc>,
+	model: &'a CompiledModel<(), Tq, Tc>,
 	qubits: Vec<&'a Qubit<Tq>>,
 	pub iterations: usize,
 	pub samples: usize,
@@ -23,24 +22,22 @@ where
 	pub annealer_info: T,
 }
 
-impl<'a, Tp, Tq, Tc> SimpleSolver<'a, Tp, Tq, Tc, InternalAnnealerInfo>
+impl<'a, Tq, Tc> SimpleSolver<'a, Tq, Tc, InternalAnnealerInfo>
 where
-	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn new(model: &'a CompiledModel<Tp, Tq, Tc>) -> Self {
+	pub fn new(model: &'a CompiledModel<(), Tq, Tc>) -> Self {
 		Self::with_annealer(model, InternalAnnealerInfo::new())
 	}
 }
 
-impl<'a, Tp, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tp, Tq, Tc, T>
+impl<'a, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tq, Tc, T>
 where
-	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn with_annealer(model: &'a CompiledModel<Tp, Tq, Tc>, annealer_info: T) -> Self {
+	pub fn with_annealer(model: &'a CompiledModel<(), Tq, Tc>, annealer_info: T) -> Self {
 		let qubits = model.get_qubits().into_iter().collect::<Vec<_>>();
 		Self {
 			model,
@@ -92,9 +89,8 @@ where
 	}
 }
 
-impl<'a, Tp, Tq, T: AnnealerInfo> SimpleSolver<'a, Tp, Tq, (), T>
+impl<'a, Tq, T: AnnealerInfo> SimpleSolver<'a, Tq, (), T>
 where
-	Tp: TpType + Send + Sync,
 	Tq: TqType + Send + Sync,
 {
 	pub fn solve(&self) -> Result<(f64, HashMap<&Tq, bool>), <T as AnnealerInfo>::ErrorType> {
@@ -103,9 +99,8 @@ where
 	}
 }
 
-impl<'a, Tp, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tp, Tq, Tc, T>
+impl<'a, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tq, Tc, T>
 where
-	Tp: TpType + Send + Sync,
 	Tq: TqType + Send + Sync,
 	Tc: TcType + Send + Sync,
 {
@@ -116,7 +111,7 @@ where
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
 		for _ in 0..self.iterations {
-			let mut phdict: HashMap<&Placeholder<Tp, Tc>, usize> =
+			let mut phdict: HashMap<&Placeholder<(), Tc>, usize> =
 				ph.iter().map(|p| (*p, 10)).collect();
 			let mut size = ph.len() * 10;
 			let mut old_energy = f64::INFINITY;

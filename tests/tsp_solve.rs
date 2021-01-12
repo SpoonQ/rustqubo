@@ -45,7 +45,7 @@ fn run_tsp() {
 			}
 		}
 	}
-	let hmlt: Expr<(), _, _> = Expr::Number(700) * (hmlt_city + hmlt_order) + hmlt_distance;
+	let hmlt = Expr::Number(700) * (hmlt_city + hmlt_order) + hmlt_distance;
 	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
 	solver.generations = 20;

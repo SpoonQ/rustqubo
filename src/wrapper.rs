@@ -1,33 +1,24 @@
 use crate::{TcType, TpType, TqType};
 
 #[derive(Clone, Debug)]
-pub struct Builder<Tp, Tq>
+pub struct Builder<Tq>
 where
-	Tp: TpType,
 	Tq: TqType,
 {
 	ancillas: usize,
-	placeholders: usize,
-	_phantom: std::marker::PhantomData<(Tp, Tq)>,
+	_phantom: std::marker::PhantomData<Tq>,
 }
 
-impl<Tp, Tq> Builder<Tp, Tq>
+impl<Tq> Builder<Tq>
 where
-	Tp: TpType,
 	Tq: TqType,
 {
 	pub fn new() -> Self {
 		Self {
 			ancillas: 0,
-			placeholders: 0,
 			_phantom: std::marker::PhantomData,
 		}
 	}
-
-	// pub fn placeholder(&mut self) -> Placeholder<Tp> {
-	// 	self.placeholders += 1;
-	// 	Placeholder::Internal
-	// }
 
 	pub fn ancilla(&mut self) -> Qubit<Tq>
 	where
@@ -64,4 +55,19 @@ where
 {
 	Placeholder(Tp),
 	Constraint(Tc),
+}
+
+impl<Tp, Tc> Placeholder<Tp, Tc>
+where
+	Tp: TpType,
+	Tc: TcType,
+{
+	pub(crate) fn drop_placeholder(self) -> Placeholder<(), Tc> {
+		match self {
+			Self::Placeholder(p) => {
+				panic!("Placeholder {:?} must be fulfilled.", &p)
+			}
+			Self::Constraint(c) => Placeholder::Constraint(c),
+		}
+	}
 }

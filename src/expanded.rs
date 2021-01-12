@@ -125,6 +125,15 @@ where
 		Self(m)
 	}
 
+	pub(crate) fn drop_placeholder(mut self) -> Expanded<(), Tq, Tc> {
+		Expanded(
+			self.0
+				.drain()
+				.map(|(key, exp)| (key, exp.drop_placeholder()))
+				.collect(),
+		)
+	}
+
 	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, NumberOrFloat>) -> Self {
 		Self(
 			self.0

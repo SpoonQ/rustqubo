@@ -15,7 +15,7 @@ where
 {
 	expanded: Expanded<Tp, Tq, Tc>,
 	constraints: Vec<Constraint<Tp, Tq, Tc>>,
-	builder: Builder<Tp, Tq>,
+	builder: Builder<Tq>,
 }
 
 impl<Tp, Tq, Tc> CompiledModel<Tp, Tq, Tc>
@@ -37,23 +37,27 @@ where
 	}
 
 	/// Feed real values to fill the placeholders.
-	pub fn feed_dict(mut self, mut dict: HashMap<Tp, NumberOrFloat>) -> Self {
+	pub fn feed_dict(self, mut dict: HashMap<Tp, NumberOrFloat>) -> CompiledModel<(), Tq, Tc> {
 		let dict: HashMap<Placeholder<Tp, Tc>, NumberOrFloat> = dict
 			.drain()
 			.map(|(k, v)| (Placeholder::Placeholder(k), v))
 			.collect();
-		self.expanded = self.expanded.feed_dict(&dict);
-		self.constraints = self
+		let expanded = self.expanded.feed_dict(&dict).drop_placeholder();
+		let constraints = self
 			.constraints
 			.into_iter()
-			.map(|cs| cs.feed_dict(&dict))
+			.map(|cs| cs.feed_dict(&dict).drop_placeholder())
 			.collect();
-		self
+		CompiledModel {
+			expanded,
+			constraints,
+			builder: self.builder,
+		}
 	}
 
 	fn generate_replace(
 		set: &BTreeSet<Qubit<Tq>>,
-		builder: &mut Builder<Tp, Tq>,
+		builder: &mut Builder<Tq>,
 		p: Option<bool>,
 	) -> (Expanded<Tp, Tq, Tc>, Option<Expanded<Tp, Tq, Tc>>) {
 		let mut exp = Expanded::new();
