@@ -37,6 +37,7 @@ jobs:
                 ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
                 PUBLISH_DIR: ./target/doc
                 SCRIPT_MODE: true
+                PUBLISH_BRANCH: gh-pages
               run: |
                 wget https://raw.githubusercontent.com/peaceiris/actions-gh-pages/v2.5.0/entrypoint.sh
                 bash ./entrypoint.sh
