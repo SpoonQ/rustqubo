@@ -75,16 +75,18 @@ where
 
 	pub(crate) fn to_model(self) -> Model<Tp, Tq, Tc> {
 		match self {
-			Self::Placeholder(lb) => StaticExpr::Placeholder(Placeholder::Placeholder(lb)).into(),
+			Self::Placeholder(lb) => {
+				Model::from(StaticExpr::Placeholder(Placeholder::Placeholder(lb)))
+			}
 			Self::Add(lhs, rhs) => lhs.to_model() + rhs.to_model(),
 			Self::Mul(lhs, rhs) => lhs.to_model() * rhs.to_model(),
-			Self::Number(n) => (StaticExpr::Number(n)).into(),
-			Self::Float(f) => (StaticExpr::Float(f)).into(),
-			Self::Binary(lb) => (lb).into(),
+			Self::Number(n) => Model::from(StaticExpr::Number(n)),
+			Self::Float(f) => Model::from(StaticExpr::Float(f)),
+			Self::Binary(lb) => Model::from(lb),
 			Self::Spin(lb) => (Expr::Binary(lb) * Expr::Number(2) - Expr::Number(1)).to_model(),
 			Self::Constraint { label: lb, expr: e } => {
 				let ph: Model<Tp, Tq, Tc> =
-					StaticExpr::Placeholder(Placeholder::Constraint(lb.clone())).into();
+					Model::from(StaticExpr::Placeholder(Placeholder::Constraint(lb.clone())));
 				(e.clone().to_model() * ph.clone()).add_constraint(
 					lb.clone(),
 					*e,
@@ -489,7 +491,7 @@ impl_assign_op!(SubAssign, Sub, sub_assign, sub);
 impl_assign_op!(MulAssign, Mul, mul_assign, mul);
 
 #[derive(PartialEq, Clone, Debug)]
-pub enum StaticExpr<Tp>
+pub(crate) enum StaticExpr<Tp>
 where
 	Tp: TpType,
 {
@@ -777,19 +779,3 @@ impl From<f64> for NumberOrFloat {
 		Self(NumberOrFloatInner::Float(f))
 	}
 }
-
-// impl<Tp> StaticExpr<Tp>
-// where
-// 	Tp: TpType,
-// {
-// 	fn map<Tpn, F>(self, f: &mut F) -> StaticExpr<Tpn>
-// 	where
-// 		Tpn: TpType,
-// 		F: FnMut(Tp) -> Tpn,
-// 	{
-// 		match self {
-// 			Self::Placeholder(p) => Self::Placeholder(f(p)),
-// 			_ => unimplemented!(),
-// 		}
-// 	}
-// }

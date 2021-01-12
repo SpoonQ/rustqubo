@@ -1,3 +1,13 @@
+//! RustQUBO is a powerful library to create QUBO from polynomial expressions
+//! with constraints and placeholders.
+//!
+//! # Examples
+//!
+//! ## Simple example
+//! ```
+//! extern crate rustqubo;
+//! use rustqubo::Expr;
+//! ```
 use std::cmp::Ord;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -16,10 +26,12 @@ impl<T> TqType for T where T: LabelType + Hash + Ord {}
 impl<T> TcType for T where T: LabelType + Hash + Ord {}
 
 mod anneal;
-pub mod compiled;
+mod compiled;
 mod expanded;
-pub mod expr;
+mod expr;
 mod model;
 pub mod solve;
 mod util;
 mod wrapper;
+
+pub use expr::Expr;

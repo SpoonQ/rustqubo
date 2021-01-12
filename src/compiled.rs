@@ -88,6 +88,7 @@ where
 					{
 						// w_n(-S1 + 2n - 1)
 						let wn = builder.ancilla();
+						// 
 						// - S1 = sum{n=0 -> d-1} -x_i
 						for j in 0..d {
 							exp.insert(

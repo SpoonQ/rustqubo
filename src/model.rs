@@ -4,7 +4,6 @@ use crate::expr::{Expr, NumberOrFloat};
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TpType, TqType};
 use std::collections::HashMap;
-use std::convert::From;
 use std::ops::{Add, Mul};
 
 #[derive(Clone, Debug)]
@@ -33,6 +32,12 @@ where
 		}
 	}
 
+	pub(crate) fn from<Q: Into<Expanded<Tp, Tq, Tc>>>(q: Q) -> Self {
+		let mut ret = Model::new();
+		ret.expanded = q.into();
+		ret
+	}
+
 	#[inline]
 	pub fn add_penalty(mut self, other: Self) -> Self {
 		self.penalties += other.penalties + other.expanded;
@@ -56,19 +61,19 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc, Q> From<Q> for Model<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-	Q: Into<Expanded<Tp, Tq, Tc>>,
-{
-	fn from(q: Q) -> Self {
-		let mut ret = Model::new();
-		ret.expanded = q.into();
-		ret
-	}
-}
+// impl<Tp, Tq, Tc, Q> From<Q> for Model<Tp, Tq, Tc>
+// where
+// 	Tp: TpType,
+// 	Tq: TqType,
+// 	Tc: TcType,
+// 	Q: Into<Expanded<Tp, Tq, Tc>>,
+// {
+// 	fn from(q: Q) -> Self {
+// 		let mut ret = Model::new();
+// 		ret.expanded = q.into();
+// 		ret
+// 	}
+// }
 
 impl<Tp, Tq, Tc, RHS> Add<RHS> for Model<Tp, Tq, Tc>
 where

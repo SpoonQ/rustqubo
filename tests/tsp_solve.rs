@@ -1,6 +1,6 @@
 extern crate rustqubo;
-use rustqubo::expr::Expr;
 use rustqubo::solve::SimpleSolver;
+use rustqubo::Expr;
 
 #[allow(unused)]
 fn run_tsp() {
@@ -65,7 +65,8 @@ fn test() {
 	let exp = Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
 	let compiled = exp.compile();
 	println!("{:?}", &compiled);
-	// let compiled = compiled.feed_dict([(a: 1.2), (b: 2.3)].into_iter().collect());
+	// let compiled = compiled.feed_dict([(a: 1.2), (b:
+	// 2.3)].into_iter().collect());
 	let solver = SimpleSolver::new(&compiled);
 	let (c, qubits) = solver.solve().unwrap();
 	assert_eq!(*qubits.get(&1).unwrap(), true);

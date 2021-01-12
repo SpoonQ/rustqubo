@@ -97,7 +97,9 @@ where
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct Expanded<Tp, Tq, Tc>(HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>)
+pub(crate) struct Expanded<Tp, Tq, Tc>(
+	HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>,
+)
 where
 	Tp: TpType,
 	Tq: TqType,
