@@ -50,7 +50,7 @@ fn run_tsp() {
 	let mut solver = SimpleSolver::new(&compiled);
 	solver.generations = 20;
 	solver.samples = 1;
-	let (c, qubits, constraints) = solver.solve().unwrap();
+	let (c, qubits, constraints) = solver.solve_with_constraints().unwrap();
 	// println!("{:?} {:?}", qubits, constraints);
 	assert!(constraints.len() == 0);
 }
@@ -62,13 +62,13 @@ fn tsp_test() {
 
 #[test]
 fn test() {
-	let exp: Expr<(), _, ()> =
+	let exp: Expr<(), _, _> =
 		Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
 	let compiled = exp.compile();
 	println!("{:?}", &compiled);
 	// let compiled = compiled.feed_dict([(a: 1.2), (b: 2.3)].into_iter().collect());
 	let solver = SimpleSolver::new(&compiled);
-	let (c, qubits, _constraints) = solver.solve().unwrap();
+	let (c, qubits) = solver.solve().unwrap();
 	assert_eq!(*qubits.get(&1).unwrap(), true);
 	assert_eq!(*qubits.get(&2).unwrap(), false);
 	assert!((c - 11.0).abs() < 1e-4);

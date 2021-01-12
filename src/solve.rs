@@ -92,6 +92,17 @@ where
 	}
 }
 
+impl<'a, Tp, Tq, T: AnnealerInfo> SimpleSolver<'a, Tp, Tq, (), T>
+where
+	Tp: TpType + Send + Sync,
+	Tq: TqType + Send + Sync,
+{
+	pub fn solve(&self) -> Result<(f64, HashMap<&Tq, bool>), <T as AnnealerInfo>::ErrorType> {
+		// Drop constraint missing information
+		self.solve_with_constraints().map(|(a, b, _)| (a, b))
+	}
+}
+
 impl<'a, Tp, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tp, Tq, Tc, T>
 where
 	Tp: TpType + Send + Sync,
@@ -99,7 +110,7 @@ where
 	Tc: TcType + Send + Sync,
 {
 	/// Solve the model using internal annealer.
-	pub fn solve(
+	pub fn solve_with_constraints(
 		&self,
 	) -> Result<(f64, HashMap<&Tq, bool>, Vec<&Tc>), <T as AnnealerInfo>::ErrorType> {
 		let ph = self.model.get_placeholders();
