@@ -6,30 +6,6 @@ use std::collections::{BTreeSet, HashMap};
 use std::mem::MaybeUninit;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-// pub trait Expression<Tp, Tq, Tc>
-// where
-// 	Tp: TpType,
-// 	Tq: TqType,
-// 	Tc: TcType,
-// {
-// 	fn to_expr(self) -> Expr<Tp, Tq, Tc>;
-//
-// 	fn compile(self) -> Model<Tp, Tq, Tc> {
-// 		self.to_expr().compile()
-// 	}
-// }
-//
-// impl<Tp, Tq, Tc> Expression<Tp, Tq, Tc> for Expr<Tp, Tq, Tc>
-// where
-// 	Tp: TpType,
-// 	Tq: TqType,
-// 	Tc: TcType,
-// {
-// 	fn to_expr(self) -> Self {
-// 		self
-// 	}
-// }
-
 #[derive(PartialEq, Clone, Debug)]
 pub enum Expr<Tp, Tq, Tc>
 where
@@ -306,91 +282,89 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc> Add for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	type Output = Expr<Tp, Tq, Tc>;
-	#[inline]
-	fn add(self, other: Self) -> Self::Output {
-		Self::Add(Box::new(self), Box::new(other))
-	}
+macro_rules! impl_binary_op_inner {
+	(Sub, sub, $rhs:ty) => {
+		impl<Tp, Tq, Tc> Sub<$rhs> for Expr<Tp, Tq, Tc>
+		where
+			Tp: TpType,
+			Tq: TqType,
+			Tc: TcType,
+		{
+			type Output = Expr<Tp, Tq, Tc>;
+			#[inline]
+			fn sub(self, other: $rhs) -> Self::Output {
+				Self::Add(
+					Box::new(self),
+					Box::new(<$rhs as Into<Self::Output>>::into(-other)),
+				)
+			}
+		}
+	};
+	($trait:ident, $fun:ident, $rhs:ty) => {
+		impl<Tp, Tq, Tc> $trait<$rhs> for Expr<Tp, Tq, Tc>
+		where
+			Tp: TpType,
+			Tq: TqType,
+			Tc: TcType,
+		{
+			type Output = Expr<Tp, Tq, Tc>;
+			#[inline]
+			fn $fun(self, other: $rhs) -> Self::Output {
+				Self::$trait(
+					Box::new(self),
+					Box::new(<$rhs as Into<Self::Output>>::into(other)),
+				)
+			}
+		}
+	};
 }
 
-impl<Tp, Tq, Tc> AddAssign for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	#[inline]
-	fn add_assign(&mut self, other: Self) {
-		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
-		std::mem::swap(self, &mut inner);
-		let mut outer = inner.add(other);
-		std::mem::swap(self, &mut outer);
-		std::mem::forget(outer);
-	}
+macro_rules! impl_binary_op {
+	($trait:ident, $fun:ident) => {
+		impl_binary_op_inner!($trait, $fun, Self);
+		impl_binary_op_inner!($trait, $fun, i32);
+		impl_binary_op_inner!($trait, $fun, f64);
+	};
 }
 
-impl<Tp, Tq, Tc> Sub for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	type Output = Self;
-	#[inline]
-	fn sub(self, other: Self) -> Self::Output {
-		Self::Add(Box::new(self), Box::new(-other))
-	}
+impl_binary_op!(Add, add);
+impl_binary_op!(Sub, sub);
+impl_binary_op!(Mul, mul);
+
+macro_rules! impl_assign_op_inner {
+	($trait:ident, $trait_inner:ident, $fun:ident, $fun_inner:ident, $rhs:ty) => {
+		impl<Tp, Tq, Tc> $trait<$rhs> for Expr<Tp, Tq, Tc>
+		where
+			Tp: TpType,
+			Tq: TqType,
+			Tc: TcType,
+		{
+			#[inline]
+			fn $fun(&mut self, other: $rhs) {
+				let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
+				std::mem::swap(self, &mut inner);
+				let mut outer = <Self as $trait_inner<Self>>::$fun_inner(
+					inner,
+					<$rhs as Into<Expr<Tp, Tq, Tc>>>::into(other),
+				);
+				std::mem::swap(self, &mut outer);
+				std::mem::forget(outer);
+			}
+		}
+	};
 }
 
-impl<Tp, Tq, Tc> SubAssign for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	#[inline]
-	fn sub_assign(&mut self, other: Self) {
-		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
-		std::mem::swap(self, &mut inner);
-		let mut outer = inner.sub(other);
-		std::mem::swap(self, &mut outer);
-		std::mem::forget(outer);
-	}
+macro_rules! impl_assign_op {
+	($trait:ident, $trait_inner:ident, $fun:ident, $fun_inner:ident) => {
+		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, Self);
+		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32);
+		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, f64);
+	};
 }
 
-impl<Tp, Tq, Tc> Mul for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	type Output = Self;
-	#[inline]
-	fn mul(self, other: Self) -> Self::Output {
-		Self::Mul(Box::new(self), Box::new(other))
-	}
-}
-impl<Tp, Tq, Tc> MulAssign for Expr<Tp, Tq, Tc>
-where
-	Tp: TpType,
-	Tq: TqType,
-	Tc: TcType,
-{
-	#[inline]
-	fn mul_assign(&mut self, other: Self) {
-		let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
-		std::mem::swap(self, &mut inner);
-		let mut outer = inner.mul(other);
-		std::mem::swap(self, &mut outer);
-		std::mem::forget(outer);
-	}
-}
+impl_assign_op!(AddAssign, Add, add_assign, add);
+impl_assign_op!(SubAssign, Sub, sub_assign, sub);
+impl_assign_op!(MulAssign, Mul, mul_assign, mul);
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum StaticExpr<Tp>
