@@ -62,8 +62,7 @@ fn tsp_test() {
 
 #[test]
 fn test() {
-	let exp: Expr<(), _, _> =
-		Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
+	let exp = Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
 	let compiled = exp.compile();
 	println!("{:?}", &compiled);
 	// let compiled = compiled.feed_dict([(a: 1.2), (b: 2.3)].into_iter().collect());
