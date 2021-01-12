@@ -186,6 +186,11 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">compiled</span>::<span class="ident">CompiledModel</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">expanded</span>::<span class="ident">Expanded</span>;
@@ -193,7 +198,6 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wrapper</span>::{<span class="ident">Placeholder</span>, <span class="ident">Qubit</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TcType</span>, <span class="ident">TpType</span>, <span class="ident">TqType</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">From</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">Add</span>, <span class="ident">Mul</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
@@ -222,6 +226,12 @@
 		}
 	}
 
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from</span><span class="op">&lt;</span><span class="ident">Q</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Expanded</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">q</span>: <span class="ident">Q</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">Model</span>::<span class="ident">new</span>();
+		<span class="ident">ret</span>.<span class="ident">expanded</span> <span class="op">=</span> <span class="ident">q</span>.<span class="ident">into</span>();
+		<span class="ident">ret</span>
+	}
+
 	<span class="attribute">#[<span class="ident">inline</span>]</span>
 	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_penalty</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="self">self</span>.<span class="ident">penalties</span> <span class="op">+</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">penalties</span> <span class="op">+</span> <span class="ident">other</span>.<span class="ident">expanded</span>;
@@ -245,19 +255,19 @@
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">Q</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
-	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
-	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
-	<span class="ident">Q</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Expanded</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-{
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">q</span>: <span class="ident">Q</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">Model</span>::<span class="ident">new</span>();
-		<span class="ident">ret</span>.<span class="ident">expanded</span> <span class="op">=</span> <span class="ident">q</span>.<span class="ident">into</span>();
-		<span class="ident">ret</span>
-	}
-}
+<span class="comment">// impl&lt;Tp, Tq, Tc, Q&gt; From&lt;Q&gt; for Model&lt;Tp, Tq, Tc&gt;</span>
+<span class="comment">// where</span>
+<span class="comment">// 	Tp: TpType,</span>
+<span class="comment">// 	Tq: TqType,</span>
+<span class="comment">// 	Tc: TcType,</span>
+<span class="comment">// 	Q: Into&lt;Expanded&lt;Tp, Tq, Tc&gt;&gt;,</span>
+<span class="comment">// {</span>
+<span class="comment">// 	fn from(q: Q) -&gt; Self {</span>
+<span class="comment">// 		let mut ret = Model::new();</span>
+<span class="comment">// 		ret.expanded = q.into();</span>
+<span class="comment">// 		ret</span>
+<span class="comment">// 	}</span>
+<span class="comment">// }</span>
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">RHS</span><span class="op">&gt;</span> <span class="ident">Add</span><span class="op">&lt;</span><span class="ident">RHS</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
 <span class="kw">where</span>

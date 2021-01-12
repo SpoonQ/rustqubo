@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["compiled",""],["expr",""],["solve",""]],"trait":[["LabelType",""],["TcType",""],["TpType",""],["TqType",""]]});
+initSidebarItems({"enum":[["Expr",""]],"mod":[["solve",""]],"trait":[["LabelType",""],["TcType",""],["TpType",""],["TqType",""]]});

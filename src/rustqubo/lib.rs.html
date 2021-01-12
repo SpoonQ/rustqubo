@@ -26,7 +26,29 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! RustQUBO is a powerful library to create QUBO from polynomial expressions</span>
+<span class="doccomment">//! with constraints and placeholders.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Examples</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Simple example</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//! extern crate rustqubo;</span>
+<span class="doccomment">//! use rustqubo::Expr;</span>
+<span class="doccomment">//! ```</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>;
@@ -45,12 +67,14 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">TcType</span> <span class="kw">for</span> <span class="ident">T</span> <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">LabelType</span> <span class="op">+</span> <span class="ident">Hash</span> <span class="op">+</span> <span class="ident">Ord</span> {}
 
 <span class="kw">mod</span> <span class="ident">anneal</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">compiled</span>;
+<span class="kw">mod</span> <span class="ident">compiled</span>;
 <span class="kw">mod</span> <span class="ident">expanded</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">expr</span>;
+<span class="kw">mod</span> <span class="ident">expr</span>;
 <span class="kw">mod</span> <span class="ident">model</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">solve</span>;
 <span class="kw">mod</span> <span class="ident">util</span>;
 <span class="kw">mod</span> <span class="ident">wrapper</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">expr</span>::<span class="ident">Expr</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "rustqubo";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

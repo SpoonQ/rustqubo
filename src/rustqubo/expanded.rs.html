@@ -429,6 +429,8 @@
 <span id="426">426</span>
 <span id="427">427</span>
 <span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">expr</span>::{<span class="ident">Expr</span>, <span class="ident">NumberOrFloat</span>, <span class="ident">StaticExpr</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wrapper</span>::{<span class="ident">Placeholder</span>, <span class="ident">Qubit</span>};
@@ -529,7 +531,9 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Expanded</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>(<span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Qubit</span><span class="op">&lt;</span><span class="ident">Tq</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>)
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Expanded</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>(
+	<span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Qubit</span><span class="op">&lt;</span><span class="ident">Tq</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+)
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
