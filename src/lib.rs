@@ -15,9 +15,6 @@ impl<T> TpType for T where T: LabelType + Hash + Ord {}
 impl<T> TqType for T where T: LabelType + Hash + Ord {}
 impl<T> TcType for T where T: LabelType + Hash + Ord {}
 
-#[cfg(feature = "external-apis")]
-mod adapter;
-
 mod anneal;
 pub mod compiled;
 mod expanded;
