@@ -208,6 +208,77 @@ where
 	}
 }
 
+macro_rules! impl_from_qubit {
+	($q:ident, String) => {
+		impl_from_qubit!($q, &str, String);
+		impl_from_qubit!($q, String, String);
+	};
+	($q:ident, $typ:ty) => {
+		impl_from_qubit!($q, $typ, $typ);
+	};
+	($q:ident, $typ:ty, $typ_out:ty) => {
+		impl<Tp, Tc> From<$typ> for Expr<Tp, $typ_out, Tc>
+		where
+			Tp: TpType,
+			Tc: TcType,
+		{
+			#[inline]
+			fn from(q: $typ) -> Self {
+				Expr::$q(<$typ as Into<$typ_out>>::into(q))
+			}
+		}
+	};
+}
+
+macro_rules! impl_from_qubit_tuple2 {
+	($q:ident, $typ1:ty) => {
+		impl_from_qubit_tuple2!($q, $typ1, $typ1, $typ1, $typ1);
+	};
+	($q:ident, String, String) => {
+		impl_from_qubit_tuple2!($q, &str, &str, String, String);
+		impl_from_qubit_tuple2!($q, String, String, String, String);
+	};
+	($q:ident, String, $typ2:ty) => {
+		impl_from_qubit_tuple2!($q, &str, $typ2, String, $typ2);
+		impl_from_qubit_tuple2!($q, String, $typ2, String, $typ2);
+		impl_from_qubit_tuple2!($q, $typ2, &str, $typ2, String);
+		impl_from_qubit_tuple2!($q, $typ2, String, $typ2, String);
+	};
+	($q:ident, $typ1:ty, String) => {
+		impl_from_qubit_tuple2!($q, $typ1, &str, $typ1, String);
+		impl_from_qubit_tuple2!($q, $typ1, String, $typ1, String);
+		impl_from_qubit_tuple2!($q, &str, $typ1, String, $typ1);
+		impl_from_qubit_tuple2!($q, String, $typ1, String, $typ1);
+	};
+	($q:ident, $typ1:ty, $typ2:ty) => {
+		impl_from_qubit_tuple2!($q, $typ1, $typ2, $typ1, $typ2);
+		impl_from_qubit_tuple2!($q, $typ2, $typ1, $typ2, $typ1);
+	};
+	($q:ident, $typ1:ty, $typ2:ty, $typ_out1:ty,$typ_out2:ty) => {
+		impl<Tp, Tc> From<($typ1, $typ2)> for Expr<Tp, ($typ_out1, $typ_out2), Tc>
+		where
+			Tp: TpType,
+			Tc: TcType,
+		{
+			#[inline]
+			fn from(q: ($typ1, $typ2)) -> Self {
+				Expr::$q((
+					<$typ1 as Into<$typ_out1>>::into(q.0),
+					<$typ2 as Into<$typ_out2>>::into(q.1),
+				))
+			}
+		}
+	};
+}
+
+impl_from_qubit!(Binary, String);
+impl_from_qubit_tuple2!(Binary, String, String);
+impl_from_qubit_tuple2!(Binary, String, i32);
+impl_from_qubit_tuple2!(Binary, i32);
+impl_from_qubit_tuple2!(Binary, String, bool);
+impl_from_qubit_tuple2!(Binary, bool);
+impl_from_qubit_tuple2!(Binary, i32, bool);
+
 impl<Tp, Tq, Tc> From<f64> for Expr<Tp, Tq, Tc>
 where
 	Tp: TpType,
@@ -319,11 +390,62 @@ macro_rules! impl_binary_op_inner {
 	};
 }
 
+macro_rules! impl_binary_op_inner_qubit {
+	(Sub, sub, $rhs:ty, $rhs2:ty) => {
+		impl<Tp, Tc> Sub<$rhs> for Expr<Tp, $rhs2, Tc>
+		where
+			Tp: TpType,
+			Tc: TcType,
+		{
+			type Output = Self;
+			#[inline]
+			fn sub(self, other: $rhs) -> Self::Output {
+				Self::Add(
+					Box::new(self),
+					Box::new(-<$rhs as Into<Self::Output>>::into(other)),
+				)
+			}
+		}
+	};
+	($trait:ident, $fun:ident, $rhs:ty, $rhs2:ty) => {
+		impl<Tp, Tc> $trait<$rhs> for Expr<Tp, $rhs2, Tc>
+		where
+			Tp: TpType,
+			Tc: TcType,
+		{
+			type Output = Self;
+			#[inline]
+			fn $fun(self, other: $rhs) -> Self::Output {
+				Self::$trait(
+					Box::new(self),
+					Box::new(<$rhs as Into<Self::Output>>::into(other)),
+				)
+			}
+		}
+	};
+}
+
 macro_rules! impl_binary_op {
 	($trait:ident, $fun:ident) => {
 		impl_binary_op_inner!($trait, $fun, Self);
 		impl_binary_op_inner!($trait, $fun, i32);
 		impl_binary_op_inner!($trait, $fun, f64);
+		impl_binary_op_inner_qubit!($trait, $fun, &str, String);
+		impl_binary_op_inner_qubit!($trait, $fun, String, String);
+		impl_binary_op_inner_qubit!($trait, $fun, (&str, &str), (String, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (String, String), (String, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (i32, &str), (i32, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (i32, String), (i32, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (&str, i32), (String, i32));
+		impl_binary_op_inner_qubit!($trait, $fun, (String, i32), (String, i32));
+		impl_binary_op_inner_qubit!($trait, $fun, (i32, i32), (i32, i32));
+		impl_binary_op_inner_qubit!($trait, $fun, (&str, bool), (String, bool));
+		impl_binary_op_inner_qubit!($trait, $fun, (String, bool), (String, bool));
+		impl_binary_op_inner_qubit!($trait, $fun, (bool, &str), (bool, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (bool, String), (bool, String));
+		impl_binary_op_inner_qubit!($trait, $fun, (bool, bool), (bool, bool));
+		impl_binary_op_inner_qubit!($trait, $fun, (bool, i32), (bool, i32));
+		impl_binary_op_inner_qubit!($trait, $fun, (i32, bool), (i32, bool));
 	};
 }
 
