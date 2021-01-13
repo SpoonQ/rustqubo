@@ -7,6 +7,14 @@
 //! ```
 //! extern crate rustqubo;
 //! use rustqubo::Expr;
+//! use rustqubo::solve::SimpleSolver;
+//! let hmlt = - Expr::Spin("a") * Expr::Spin("b") + Expr::Spin("a") * 2;
+//! let compiled = hmlt.compile();
+//! let solver = SimpleSolver::new(&compiled);
+//! let (c, qubits) = solver.solve().unwrap();
+//! assert_eq!(qubits.get(&"a"), Some(&false));
+//! assert_eq!(qubits.get(&"b"), Some(&false));
+//! assert_eq!(c, -3.0);
 //! ```
 use std::cmp::Ord;
 use std::fmt::Debug;
@@ -35,3 +43,8 @@ mod util;
 mod wrapper;
 
 pub use expr::Expr;
+
+#[test]
+fn expr_test() {
+	let _: Expr<(), _, ()> = 2 * Expr::Binary(("a", "b")) * 3;
+}

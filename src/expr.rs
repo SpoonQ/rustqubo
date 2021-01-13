@@ -208,6 +208,21 @@ where
 			} => panic!("cannot map on Constraint | WithPenalty"),
 		}
 	}
+
+	#[inline]
+	fn add(self, other: Self) -> Self {
+		Self::Add(Box::new(self), Box::new(other))
+	}
+
+	#[inline]
+	fn sub(self, other: Self) -> Self {
+		self.add(-other)
+	}
+
+	#[inline]
+	fn mul(self, other: Self) -> Self {
+		Self::Mul(Box::new(self), Box::new(other))
+	}
 }
 
 macro_rules! impl_from_qubit {
@@ -356,25 +371,8 @@ where
 }
 
 macro_rules! impl_binary_op_inner {
-	(Sub, sub, $rhs:ty) => {
-		impl<Tp, Tq, Tc> Sub<$rhs> for Expr<Tp, Tq, Tc>
-		where
-			Tp: TpType,
-			Tq: TqType,
-			Tc: TcType,
-		{
-			type Output = Expr<Tp, Tq, Tc>;
-			#[inline]
-			fn sub(self, other: $rhs) -> Self::Output {
-				Self::Add(
-					Box::new(self),
-					Box::new(<$rhs as Into<Self::Output>>::into(-other)),
-				)
-			}
-		}
-	};
-	($trait:ident, $fun:ident, $rhs:ty) => {
-		impl<Tp, Tq, Tc> $trait<$rhs> for Expr<Tp, Tq, Tc>
+	($trait:ident, $fun:ident, $lhs:ty, $rhs:ty) => {
+		impl<Tp, Tq, Tc> $trait<$rhs> for $lhs
 		where
 			Tp: TpType,
 			Tq: TqType,
@@ -383,44 +381,9 @@ macro_rules! impl_binary_op_inner {
 			type Output = Expr<Tp, Tq, Tc>;
 			#[inline]
 			fn $fun(self, other: $rhs) -> Self::Output {
-				Self::$trait(
-					Box::new(self),
-					Box::new(<$rhs as Into<Self::Output>>::into(other)),
-				)
-			}
-		}
-	};
-}
-
-macro_rules! impl_binary_op_inner_qubit {
-	(Sub, sub, $rhs:ty, $rhs2:ty) => {
-		impl<Tp, Tc> Sub<$rhs> for Expr<Tp, $rhs2, Tc>
-		where
-			Tp: TpType,
-			Tc: TcType,
-		{
-			type Output = Self;
-			#[inline]
-			fn sub(self, other: $rhs) -> Self::Output {
-				Self::Add(
-					Box::new(self),
-					Box::new(-<$rhs as Into<Self::Output>>::into(other)),
-				)
-			}
-		}
-	};
-	($trait:ident, $fun:ident, $rhs:ty, $rhs2:ty) => {
-		impl<Tp, Tc> $trait<$rhs> for Expr<Tp, $rhs2, Tc>
-		where
-			Tp: TpType,
-			Tc: TcType,
-		{
-			type Output = Self;
-			#[inline]
-			fn $fun(self, other: $rhs) -> Self::Output {
-				Self::$trait(
-					Box::new(self),
-					Box::new(<$rhs as Into<Self::Output>>::into(other)),
+				Expr::$fun(
+					<$lhs as Into<Self::Output>>::into(self),
+					<$rhs as Into<Self::Output>>::into(other),
 				)
 			}
 		}
@@ -429,25 +392,11 @@ macro_rules! impl_binary_op_inner_qubit {
 
 macro_rules! impl_binary_op {
 	($trait:ident, $fun:ident) => {
-		impl_binary_op_inner!($trait, $fun, Self);
-		impl_binary_op_inner!($trait, $fun, i32);
-		impl_binary_op_inner!($trait, $fun, f64);
-		impl_binary_op_inner_qubit!($trait, $fun, &str, String);
-		impl_binary_op_inner_qubit!($trait, $fun, String, String);
-		impl_binary_op_inner_qubit!($trait, $fun, (&str, &str), (String, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (String, String), (String, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (i32, &str), (i32, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (i32, String), (i32, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (&str, i32), (String, i32));
-		impl_binary_op_inner_qubit!($trait, $fun, (String, i32), (String, i32));
-		impl_binary_op_inner_qubit!($trait, $fun, (i32, i32), (i32, i32));
-		impl_binary_op_inner_qubit!($trait, $fun, (&str, bool), (String, bool));
-		impl_binary_op_inner_qubit!($trait, $fun, (String, bool), (String, bool));
-		impl_binary_op_inner_qubit!($trait, $fun, (bool, &str), (bool, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (bool, String), (bool, String));
-		impl_binary_op_inner_qubit!($trait, $fun, (bool, bool), (bool, bool));
-		impl_binary_op_inner_qubit!($trait, $fun, (bool, i32), (bool, i32));
-		impl_binary_op_inner_qubit!($trait, $fun, (i32, bool), (i32, bool));
+		impl_binary_op_inner!($trait, $fun, Expr<Tp, Tq, Tc>, Self);
+		impl_binary_op_inner!($trait, $fun, Expr<Tp, Tq, Tc>, i32);
+		impl_binary_op_inner!($trait, $fun, Expr<Tp, Tq, Tc>, f64);
+		impl_binary_op_inner!($trait, $fun, i32, Expr<Tp, Tq, Tc>);
+		impl_binary_op_inner!($trait, $fun, f64, Expr<Tp, Tq, Tc>);
 	};
 }
 
