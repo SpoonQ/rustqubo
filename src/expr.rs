@@ -4,7 +4,7 @@ use crate::wrapper::Placeholder;
 use crate::{TcType, TpType, TqType};
 use std::collections::{BTreeSet, HashMap};
 use std::mem::MaybeUninit;
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, BitXor, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Expr<Tp, Tq, Tc>
@@ -403,6 +403,23 @@ macro_rules! impl_binary_op {
 impl_binary_op!(Add, add);
 impl_binary_op!(Sub, sub);
 impl_binary_op!(Mul, mul);
+
+impl<Tp, Tq, Tc> BitXor<usize> for Expr<Tp, Tq, Tc>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
+{
+	type Output = Self;
+	#[inline]
+	fn bitxor(self, other: usize) -> Self {
+		let mut hmlt = Expr::Number(1);
+		for _ in 0..other {
+			hmlt *= self.clone();
+		}
+		hmlt
+	}
+}
 
 macro_rules! impl_assign_op_inner {
 	($trait:ident, $trait_inner:ident, $fun:ident, $fun_inner:ident, $rhs:ty) => {
