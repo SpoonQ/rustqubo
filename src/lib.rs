@@ -27,7 +27,7 @@
 //! let hmlt = Expr::Constraint{
 //! 		label: "constraint1",
 //! 		expr: Box::new((Expr::Binary(0) + Expr::Binary(1) - 1) ^ 2)
-//! 	} + Expr::Binary(0) * 20;
+//! 	} + Expr::Binary(0) * 30;
 //! let compiled = hmlt.compile();
 //! let solver = SimpleSolver::new(&compiled);
 //! let (c, qubits, unsatisfied) = solver.solve_with_constraints().unwrap();
@@ -42,6 +42,7 @@ use std::cmp::Ord;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+extern crate annealers;
 extern crate rand;
 extern crate rayon;
 
@@ -55,7 +56,7 @@ impl<T> TpType for T where T: LabelType + Hash + Ord {}
 impl<T> TqType for T where T: LabelType + Hash + Ord {}
 impl<T> TcType for T where T: LabelType + Hash + Ord {}
 
-mod anneal;
+// mod anneal;
 mod compiled;
 mod expanded;
 mod expr;

@@ -1,6 +1,8 @@
 use crate::expr::{Expr, NumberOrFloat, StaticExpr};
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TpType, TqType};
+use annealers::model::FixedSingleQuadricModel;
+use annealers::node::Binary;
 use std::collections::{BTreeSet, HashMap};
 use std::convert::From;
 use std::hash::Hash;
@@ -190,7 +192,7 @@ where
 		&self,
 		qubits: &[&Qubit<Tq>],
 		ph_feedback: &mut F,
-	) -> (f64, Vec<f64>, Vec<Vec<(usize, f64)>>)
+	) -> (f64, FixedSingleQuadricModel<Binary<f64>>)
 	where
 		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
 	{
@@ -201,27 +203,21 @@ where
 			.map(|(i, q)| (q, i))
 			.collect::<HashMap<&Qubit<Tq>, usize>>();
 		let mut c = 0.0;
-		let mut h = std::iter::repeat(0.0)
-			.take(qubits.len())
-			.collect::<Vec<_>>();
-		let mut neighbors = std::iter::repeat_with(|| Vec::new())
-			.take(qubits.len())
-			.collect::<Vec<_>>();
+		let mut model = FixedSingleQuadricModel::new(Binary::new(), qubits.len());
 		for (set, expr) in self.0.iter() {
 			let val = expr.calculate(ph_feedback);
 			match &set.iter().collect::<Vec<_>>() as &[&Qubit<Tq>] {
 				&[] => c += val,
 				&[q] => {
 					if let Some(index) = dict.get(q) {
-						h[*index] = val;
+						model.add_weight(*index, *index, val);
 					} else {
 						panic!()
 					}
 				}
 				&[q1, q2] => {
 					if let (Some(index1), Some(index2)) = (dict.get(q1), dict.get(q2)) {
-						neighbors[*index1].push((*index2, val));
-						neighbors[*index2].push((*index1, val));
+						model.add_weight(*index1, *index2, val);
 					} else {
 						panic!()
 					}
@@ -229,10 +225,7 @@ where
 				_ => panic!("Cannot make qubo"),
 			}
 		}
-		for neigh in neighbors.iter_mut() {
-			neigh.sort_by_key(|(index, _)| *index);
-		}
-		(c, h, neighbors)
+		(c, model)
 	}
 
 	pub fn count_qubit_subsets(

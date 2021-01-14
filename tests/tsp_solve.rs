@@ -45,10 +45,11 @@ fn run_tsp() {
 			}
 		}
 	}
-	let hmlt = Expr::Number(700) * (hmlt_city + hmlt_order) + hmlt_distance;
+	let hmlt = Expr::Number(10) * (hmlt_city + hmlt_order) + hmlt_distance;
 	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
-	solver.generations = 20;
+	solver.generations = 10;
+	solver.iterations = 1;
 	solver.samples = 1;
 	let (c, qubits, constraints) = solver.solve_with_constraints().unwrap();
 	// println!("{:?} {:?}", qubits, constraints);

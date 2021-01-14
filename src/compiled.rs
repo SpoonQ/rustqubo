@@ -2,8 +2,9 @@ use crate::expanded::Expanded;
 use crate::expr::{NumberOrFloat, StaticExpr};
 use crate::model::Constraint;
 use crate::wrapper::{Builder, Placeholder, Qubit};
-
 use crate::{TcType, TpType, TqType};
+use annealers::model::FixedSingleQuadricModel;
+use annealers::node::Binary;
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Clone, Debug)]
@@ -88,7 +89,7 @@ where
 					{
 						// w_n(-S1 + 2n - 1)
 						let wn = builder.ancilla();
-						// 
+						//
 						// - S1 = sum{n=0 -> d-1} -x_i
 						for j in 0..d {
 							exp.insert(
@@ -231,7 +232,7 @@ where
 		&self,
 		qubits: &[&Qubit<Tq>],
 		ph_feedback: &mut F,
-	) -> (f64, Vec<f64>, Vec<Vec<(usize, f64)>>)
+	) -> (f64, FixedSingleQuadricModel<Binary<f64>>)
 	where
 		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
 	{

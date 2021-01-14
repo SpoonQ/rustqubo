@@ -1,53 +1,70 @@
-use crate::anneal::{Annealer, AnnealerInfo, InternalAnnealerInfo, QubitState};
+extern crate classical_solver;
+
 use crate::compiled::CompiledModel;
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TqType};
-use rand::rngs::{OsRng, SmallRng};
+use annealers::model::{FixedSingleQuadricModel, SingleModel};
+use annealers::node::Binary;
+use annealers::solution::SingleSolution;
+use annealers::solver::{ClassicalSolver, Solver, SolverGenerator, UnstructuredSolverGenerator};
+use classical_solver::sa::{SimulatedAnnealer, SimulatedAnnealerGenerator};
+
+use rand::rngs::{OsRng, StdRng};
 use rand::SeedableRng;
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
-pub struct SimpleSolver<'a, Tq, Tc, T: AnnealerInfo>
+pub struct SimpleSolver<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel, ST: Solver>
 where
 	Tq: TqType,
 	Tc: TcType,
 {
 	model: &'a CompiledModel<(), Tq, Tc>,
 	qubits: Vec<&'a Qubit<Tq>>,
+	_phantom: PhantomData<(P, ST)>,
 	pub iterations: usize,
 	pub samples: usize,
 	// pub processes: usize,
 	pub generations: usize,
 	pub coeff_strength: f64,
-	pub annealer_info: T,
+	pub solver_generator: T,
 }
 
-impl<'a, Tq, Tc> SimpleSolver<'a, Tq, Tc, InternalAnnealerInfo>
-where
+impl<'a, Tq, Tc>
+	SimpleSolver<
+		'a,
+		Tq,
+		Tc,
+		SimulatedAnnealerGenerator<FixedSingleQuadricModel<Binary<f64>>>,
+		FixedSingleQuadricModel<Binary<f64>>,
+		SimulatedAnnealer<FixedSingleQuadricModel<Binary<f64>>, f64>,
+	> where
 	Tq: TqType,
 	Tc: TcType,
 {
 	pub fn new(model: &'a CompiledModel<(), Tq, Tc>) -> Self {
-		Self::with_annealer(model, InternalAnnealerInfo::new())
+		Self::with_solver(model, SimulatedAnnealerGenerator::new())
 	}
 }
 
-impl<'a, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tq, Tc, T>
+impl<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel>
+	SimpleSolver<'a, Tq, Tc, T, P, T::SolverType>
 where
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn with_annealer(model: &'a CompiledModel<(), Tq, Tc>, annealer_info: T) -> Self {
+	pub fn with_solver(model: &'a CompiledModel<(), Tq, Tc>, solver_generator: T) -> Self {
 		let qubits = model.get_qubits().into_iter().collect::<Vec<_>>();
 		Self {
 			model,
 			qubits,
 			samples: rayon::current_num_threads(),
-			// processes: 1,
 			iterations: 10,
 			generations: 30,
 			coeff_strength: 50.0,
-			annealer_info,
+			solver_generator,
+			_phantom: PhantomData,
 		}
 	}
 
@@ -63,43 +80,35 @@ where
 			})
 			.collect()
 	}
-
-	fn calculate_energy(
-		state: &QubitState,
-		c: f64,
-		h: &[f64],
-		neighbors: &[Vec<(usize, f64)>],
-	) -> f64 {
-		let mut energy = c;
-		for (i, (h, neigh)) in h.iter().zip(neighbors.iter()).enumerate() {
-			if !state.get(i) {
-				continue;
-			}
-			energy += *h;
-			for (j, coeff) in neigh.iter() {
-				if i < *j {
-					break;
-				}
-				if state.get(*j) {
-					energy += *coeff;
-				}
-			}
-		}
-		energy
-	}
 }
 
-impl<'a, Tq, T: AnnealerInfo> SimpleSolver<'a, Tq, (), T>
+impl<
+		'a,
+		Tq,
+		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<f64>>, SolverType = ST>,
+		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<f64>>, ErrorType = T::ErrorType>,
+	> SimpleSolver<'a, Tq, (), T, FixedSingleQuadricModel<Binary<f64>>, ST>
 where
 	Tq: TqType + Send + Sync,
 {
-	pub fn solve(&self) -> Result<(f64, HashMap<&Tq, bool>), <T as AnnealerInfo>::ErrorType> {
+	pub fn solve(
+		&self,
+	) -> Result<
+		(f64, HashMap<&Tq, bool>),
+		<T as SolverGenerator<FixedSingleQuadricModel<Binary<f64>>>>::ErrorType,
+	> {
 		// Drop constraint missing information
 		self.solve_with_constraints().map(|(a, b, _)| (a, b))
 	}
 }
 
-impl<'a, Tq, Tc, T: AnnealerInfo> SimpleSolver<'a, Tq, Tc, T>
+impl<
+		'a,
+		Tq,
+		Tc,
+		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<f64>>, SolverType = ST>,
+		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<f64>>, ErrorType = T::ErrorType>,
+	> SimpleSolver<'a, Tq, Tc, T, FixedSingleQuadricModel<Binary<f64>>, ST>
 where
 	Tq: TqType + Send + Sync,
 	Tc: TcType + Send + Sync,
@@ -107,7 +116,10 @@ where
 	/// Solve the model using internal annealer.
 	pub fn solve_with_constraints(
 		&self,
-	) -> Result<(f64, HashMap<&Tq, bool>, Vec<&Tc>), <T as AnnealerInfo>::ErrorType> {
+	) -> Result<
+		(f64, HashMap<&Tq, bool>, Vec<&Tc>),
+		<T as SolverGenerator<FixedSingleQuadricModel<Binary<f64>>>>::ErrorType,
+	> {
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
 		for _ in 0..self.iterations {
@@ -116,83 +128,75 @@ where
 			let mut size = ph.len() * 10;
 			let mut old_energy = f64::INFINITY;
 			for _ in 0..self.generations {
-				let (c, h, neighbors) = self.model.generate_qubo(&self.qubits, &mut |p| {
+				let (c, model) = self.model.generate_qubo(&self.qubits, &mut |p| {
 					if let Some(cnt) = phdict.get(&p) {
 						*cnt as f64 / size as f64 * self.coeff_strength
 					} else {
 						panic!()
 					}
 				});
-				// let neighbors = neighbors
-				// 	.iter()
-				// 	.map(|v| v.deref())
-				// 	.collect::<Vec<&[(usize, f64)]>>();
-				let fut_ret = std::iter::repeat((h, neighbors))
+				let fut_ret = std::iter::repeat_with(|| self.solver_generator.generate(&model))
 					.take(self.samples)
-					.collect::<Vec<_>>()
+					.collect::<Result<Vec<_>, _>>()?
 					.par_iter()
-					.map(|(h, neighbors)| {
-						let mut r = SmallRng::from_rng(OsRng).unwrap();
-						match self.annealer_info.build(h.clone(), neighbors.clone()) {
-							Ok(annealer) => annealer.anneal(&mut r).map(|state| {
-								(Self::calculate_energy(&state, c, &h, neighbors), state)
-							}),
-							Err(e) => Err(e),
-						}
+					.map(|solver| {
+						let mut r = StdRng::from_rng(OsRng).unwrap();
+						solver.solve_with_rng(&mut r).map(|v| v.into_iter())
 					})
+					.collect::<Result<Vec<_>, _>>()?
+					.into_iter()
+					.flat_map(std::convert::identity)
+					.map(|sol| sol.with_energy(&model))
 					.collect::<Vec<_>>();
-				let max =
-					fut_ret
-						.iter()
-						.fold(0.0 / 0.0, |m, v| if let Ok(v) = v { v.0.max(m) } else { m });
-				if max.is_infinite() {
-					return Err(fut_ret.into_iter().next().unwrap().unwrap_err());
-				} else {
-					let (energy, state) = fut_ret
-						.into_iter()
-						.filter(|r| if let Ok((e, _)) = r { *e == max } else { false })
-						.next()
-						.unwrap()
-						.unwrap();
-					if old_energy < energy {
-						continue;
+				let min: f64 = fut_ret
+					.iter()
+					.fold(0.0 / 0.0, |m, v| v.energy.unwrap().min(m));
+				assert!(min.is_finite());
+				let sol = fut_ret
+					.into_iter()
+					.filter(|r| r.energy.unwrap() == min)
+					.next()
+					.unwrap();
+				let energy = sol.energy.unwrap();
+				// println!("{}, {}, {}", min, old_energy, energy);
+				if old_energy <= energy {
+					continue;
+				}
+				old_energy = energy;
+				let ans: HashMap<&Qubit<Tq>, bool> = self
+					.qubits
+					.iter()
+					.enumerate()
+					.map(|(i, q)| (*q, sol[i]))
+					.collect();
+				let mut constraint_labels = Vec::new();
+				for c in self.model.get_unsatisfied_constraints(&ans) {
+					if let Some(ph) = &c.placeholder {
+						if let Some(point) = phdict.get_mut(ph) {
+							*point += 1;
+							size += 1;
+						}
 					}
-					old_energy = energy;
-					let ans: HashMap<&Qubit<Tq>, bool> = self
-						.qubits
-						.iter()
-						.enumerate()
-						.map(|(i, q)| (*q, state.get(i)))
-						.collect();
-					let mut constraint_labels = Vec::new();
-					for c in self.model.get_unsatisfied_constraints(&ans) {
-						if let Some(ph) = &c.placeholder {
-							if let Some(point) = phdict.get_mut(ph) {
-								*point += 1;
-								size += 1;
+					if let Some(label) = &c.label {
+						constraint_labels.push(label);
+					}
+				}
+				let is_satisfied = constraint_labels.len() == 0;
+				ret = Some((
+					energy + c,
+					ans.into_iter()
+						.filter_map(|(q, b)| {
+							if let Qubit::Qubit(q) = q {
+								Some((q, b))
+							} else {
+								None
 							}
-						}
-						if let Some(label) = &c.label {
-							constraint_labels.push(label);
-						}
-					}
-					let is_satisfied = constraint_labels.len() == 0;
-					ret = Some((
-						energy,
-						ans.into_iter()
-							.filter_map(|(q, b)| {
-								if let Qubit::Qubit(q) = q {
-									Some((q, b))
-								} else {
-									None
-								}
-							})
-							.collect(),
-						constraint_labels,
-					));
-					if is_satisfied {
-						return Ok(ret.unwrap());
-					}
+						})
+						.collect(),
+					constraint_labels,
+				));
+				if is_satisfied {
+					return Ok(ret.unwrap());
 				}
 			}
 		}
