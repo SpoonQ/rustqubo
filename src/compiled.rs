@@ -228,6 +228,7 @@ where
 		self.expanded.get_placeholders()
 	}
 
+	// TODO: support HashMap-based model
 	pub(crate) fn generate_qubo<F>(
 		&self,
 		qubits: &[&Qubit<Tq>],

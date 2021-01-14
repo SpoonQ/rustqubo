@@ -17,6 +17,7 @@ where
 	Add(Box<Self>, Box<Self>),
 	Mul(Box<Self>, Box<Self>),
 	Number(i32),
+	// TODO: use annealers_rust::Real
 	Float(f64),
 	Binary(Tq), // Qubit represented with +1, 0
 	Spin(Tq),   // Qubit represented with +1, -1
