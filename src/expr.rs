@@ -5,7 +5,7 @@ use crate::{TcType, TpType, TqType};
 use annealers::variable::{ConvertFrom, ConvertTo, ConvertWith, Real};
 use std::collections::{BTreeSet, HashMap};
 use std::mem::MaybeUninit;
-use std::ops::{Add, AddAssign, BitXor, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, BitXor, BitXorAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 // TODO: hide the implementation from public
 #[derive(PartialEq, Clone, Debug)]
@@ -374,302 +374,56 @@ impl_binary_op!(i64);
 impl_binary_op!(i128);
 impl_binary_op!(f32);
 impl_binary_op!(f64);
-// macro_rules! impl_binary_op {
-// 	($lhs:ty, $rhs:ty,$out:ty) => {
-// 		impl<Tp, Tq, Tc> Add<Into<Expr<Tp, Tq, Tc, $rhs>>> for Expr<Tp, Tq, Tc, $lhs>
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, $out>;
-// 			#[inline]
-// 			fn add(self, other: $rhs) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new(<$lhs as Into<Self::Output>>::into(self)),
-// 					Box::new(<$rhs as Into<Self::Output>>::into(other)),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc> Sub<$rhs> for $lhs
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, $out>;
-// 			#[inline]
-// 			fn sub(self, other: $rhs) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new(<$lhs as Into<Self::Output>>::into(self)),
-// 					Box::new(-<$rhs as Into<Self::Output>>::into(other)),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc> Mul<$rhs> for $lhs
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, $out>;
-// 			#[inline]
-// 			fn mul(self, other: $rhs) -> Self::Output {
-// 				Expr::Mul(
-// 					Box::new(<$lhs as Into<Self::Output>>::into(self)),
-// 					Box::new(<$rhs as Into<Self::Output>>::into(other)),
-// 				)
-// 			}
-// 		}
-// 	};
-// }
-//
-// macro_rules! impl_binary_op_twice {
-// 	($lhs:ty, $rhs:ty,$out:ty) => {
-// 		impl_binary_op!($lhs, $rhs, $out);
-// 		impl_binary_op!($rhs, $lhs, $out);
-// 	};
-// }
-//
-// impl_binary_op!(Expr<Tp, Tq, Tc, i8  >, Self,i8    );
-// impl_binary_op!(Expr<Tp, Tq, Tc, i16 >, Self,i16  );
-// impl_binary_op!(Expr<Tp, Tq, Tc, i32 >, Self,i32  );
-// impl_binary_op!(Expr<Tp, Tq, Tc, i64 >, Self,i64  );
-// impl_binary_op!(Expr<Tp, Tq, Tc, i128>, Self,i128);
-// impl_binary_op!(Expr<Tp, Tq, Tc, f32 >, Self,f32 );
-// impl_binary_op!(Expr<Tp, Tq, Tc, f64 >, Self,f64 );
-//
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, i8, i8);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, i16, i16);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, i32, i32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, i64, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, i128, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i8>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, i8, i16);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, i16, i16);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, i32, i32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, i64, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, i128, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i16>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, i8, i32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, i16, i32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, i32, i32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, i64, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, i128, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i32>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, i8, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, i16, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, i32, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, i64, i64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, i128, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i64>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, i8, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, i16, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, i32, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, i64, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, i128, i128);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, i128>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, i8, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, i16, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, i32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, i64, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, i128, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, f32, f32);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f32>, f64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, i8, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, i16, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, i32, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, i64, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, i128, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, f32, f64);
-// impl_binary_op_twice!(Expr<Tp, Tq, Tc, f64>, f64, f64);
 
-macro_rules! impl_bitxor {
-	($typ:ty) => {
-		impl<Tp, Tq, Tc> BitXor<usize> for Expr<Tp, Tq, Tc, $typ>
+impl<Tp, Tq, Tc, R> BitXor<usize> for Expr<Tp, Tq, Tc, R>
+where
+	Tp: TpType,
+	Tq: TqType,
+	Tc: TcType,
+	R: Real,
+{
+	type Output = Self;
+	#[inline]
+	fn bitxor(self, other: usize) -> Self {
+		let mut hmlt = Expr::Number(<R as Real>::from_i32(1));
+		if other > 0 {
+			for _ in 1..other {
+				hmlt = hmlt * self.clone();
+			}
+			hmlt = hmlt * self;
+		}
+		hmlt
+	}
+}
+
+macro_rules! impl_assign_op {
+	($trait:ident, $trait_inner:ident, $fun:ident, $fun_inner:ident, $rhs:ty, $rhs_into:ty) => {
+		impl<Tp, Tq, Tc, R> $trait<$rhs> for Expr<Tp, Tq, Tc, R>
 		where
 			Tp: TpType,
 			Tq: TqType,
 			Tc: TcType,
+			R: Real,
 		{
-			type Output = Self;
 			#[inline]
-			fn bitxor(self, other: usize) -> Self {
-				let mut hmlt = Expr::Number(<$typ as Real>::from_i32(1));
-				for _ in 0..other {
-					hmlt = hmlt * self.clone();
-				}
-				hmlt
+			fn $fun(&mut self, other: $rhs) {
+				let mut inner = unsafe { MaybeUninit::zeroed().assume_init() };
+				std::mem::swap(self, &mut inner);
+				let mut outer = <Self as $trait_inner<$rhs_into>>::$fun_inner(inner, other.into());
+				std::mem::swap(self, &mut outer);
+				std::mem::forget(outer);
 			}
 		}
 	};
 }
 
-impl_bitxor!(i8);
-impl_bitxor!(i16);
-impl_bitxor!(i32);
-impl_bitxor!(i64);
-impl_bitxor!(i128);
-impl_bitxor!(f32);
-impl_bitxor!(f64);
-
-// macro_rules! impl_binary_op {
-// 	($typ:ty) => {
-// 		impl<Tp, Tq, Tc, R> Add<$typ> for Expr<Tp, Tq, Tc, R>
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn add(self, other: $typ) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new(self.map_number()),
-// 					Box::new((<R as ConvertWith<$typ>>::convert_rhs(other)).into()),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc, R> Add<Expr<Tp, Tq, Tc, R>> for $typ
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn add(self, other: Expr<Tp, Tq, Tc, R>) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new((<R as ConvertWith<$typ>>::convert_rhs(self)).into()),
-// 					Box::new(other.map_number()),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc, R> Sub<$typ> for Expr<Tp, Tq, Tc, R>
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn sub(self, other: $typ) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new(self.map_number()),
-// 					Box::new(Expr::Mul(
-// 						Box::new(<R as ConvertWith<$typ>>::from_i32(-1).into()),
-// 						(<R as ConvertWith<$typ>>::convert_rhs(other)).into(),
-// 					)),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc, R> Sub<Expr<Tp, Tq, Tc, R>> for $typ
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn sub(self, other: Expr<Tp, Tq, Tc, R>) -> Self::Output {
-// 				Expr::Add(
-// 					Box::new((<R as ConvertWith<$typ>>::convert_rhs(self)).into()),
-// 					Box::new(Expr::Mul(
-// 						Box::new(<R as ConvertWith<$typ>>::from_i32(-1).into()),
-// 						Box::new(other.map_number()),
-// 					)),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc, R> Mul<$typ> for Expr<Tp, Tq, Tc, R>
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn mul(self, other: $typ) -> Self::Output {
-// 				Expr::Mul(
-// 					Box::new(self.map_number()),
-// 					Box::new((<R as ConvertWith<$typ>>::convert_rhs(other)).into()),
-// 				)
-// 			}
-// 		}
-// 		impl<Tp, Tq, Tc, R> Mul<Expr<Tp, Tq, Tc, R>> for $typ
-// 		where
-// 			Tp: TpType,
-// 			Tq: TqType,
-// 			Tc: TcType,
-// 			R: ConvertWith<$typ>,
-// 		{
-// 			type Output = Expr<Tp, Tq, Tc, <R as ConvertWith<$typ>>::Output>;
-// 			#[inline]
-// 			fn mul(self, other: Expr<Tp, Tq, Tc, R>) -> Self::Output {
-// 				Expr::Mul(
-// 					Box::new((<R as ConvertWith<$typ>>::convert_rhs(self)).into()),
-// 					Box::new(other.map_number()),
-// 				)
-// 			}
-// 		}
-// 	};
-// }
-//
-// impl_binary_op!(i8);
-// impl_binary_op!(i16);
-// impl_binary_op!(i32);
-// impl_binary_op!(i64);
-// impl_binary_op!(i128);
-// impl_binary_op!(f32);
-// impl_binary_op!(f64);
-
-macro_rules! impl_assign_op {
-	($trait:ident, $trait_inner:ident, $fun:ident, $fun_inner:ident) => {
-		// impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, Self);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, i8);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, i16);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, i32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, i64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, i128);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i8, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, i16);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, i32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, i64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, i128);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i16, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32, i32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32, i64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32, i128);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i32, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i64, i64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i64, i128);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i64, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i64, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i128, i128);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i128, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, i128, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, f32, f32);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, f32, f64);
-		impl_assign_op_inner!($trait, $trait_inner, $fun, $fun_inner, f64, f64);
-	};
-}
-
-// impl_assign_op!(AddAssign, Add, add_assign, add);
-// impl_assign_op!(SubAssign, Sub, sub_assign, sub);
-// impl_assign_op!(MulAssign, Mul, mul_assign, mul);
+impl_assign_op!(AddAssign, Add, add_assign, add, Expr<Tp, Tq, Tc, R>, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(SubAssign, Sub, sub_assign, sub, Expr<Tp, Tq, Tc, R>, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(MulAssign, Mul, mul_assign, mul, Expr<Tp, Tq, Tc, R>, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(AddAssign, Add, add_assign, add, R, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(SubAssign, Sub, sub_assign, sub, R, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(MulAssign, Mul, mul_assign, mul, R, Expr<Tp, Tq, Tc, R>);
+impl_assign_op!(BitXorAssign, BitXor, bitxor_assign, bitxor, usize, usize);
 
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) enum StaticExpr<Tp, R>
