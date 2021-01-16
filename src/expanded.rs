@@ -1,8 +1,9 @@
-use crate::expr::{Expr, NumberOrFloat, StaticExpr};
+use crate::expr::{Expr, StaticExpr};
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TpType, TqType};
 use annealers::model::FixedSingleQuadricModel;
 use annealers::node::Binary;
+use annealers::variable::Real;
 use std::collections::{BTreeSet, HashMap};
 use std::convert::From;
 use std::hash::Hash;
@@ -99,25 +100,27 @@ where
 }
 
 #[derive(Default, Clone, Debug)]
-pub(crate) struct Expanded<Tp, Tq, Tc>(
-	HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>,
+pub(crate) struct Expanded<Tp, Tq, Tc, R>(
+	HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>, R>>,
 )
 where
 	Tp: TpType,
 	Tq: TqType,
-	Tc: TcType;
+	Tc: TcType,
+	R: Real;
 
-impl<Tp, Tq, Tc> Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	pub fn new() -> Self {
 		Self(HashMap::new())
 	}
 
-	pub fn from(set: BTreeSet<Qubit<Tq>>, exp: StaticExpr<Placeholder<Tp, Tc>>) -> Self {
+	pub fn from(set: BTreeSet<Qubit<Tq>>, exp: StaticExpr<Placeholder<Tp, Tc>, R>) -> Self {
 		let mut m = HashMap::new();
 		m.insert(set, exp);
 		Self(m)
@@ -125,11 +128,14 @@ where
 
 	pub fn from_qubit(q: Qubit<Tq>) -> Self {
 		let mut m = HashMap::new();
-		m.insert(Some(q).into_iter().collect(), StaticExpr::Number(1));
+		m.insert(
+			Some(q).into_iter().collect(),
+			StaticExpr::Number(R::from_i32(1)),
+		);
 		Self(m)
 	}
 
-	pub(crate) fn drop_placeholder(mut self) -> Expanded<(), Tq, Tc> {
+	pub(crate) fn drop_placeholder(mut self) -> Expanded<(), Tq, Tc, R> {
 		Expanded(
 			self.0
 				.drain()
@@ -138,7 +144,7 @@ where
 		)
 	}
 
-	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, NumberOrFloat>) -> Self {
+	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, R>) -> Self {
 		Self(
 			self.0
 				.drain()
@@ -192,9 +198,9 @@ where
 		&self,
 		qubits: &[&Qubit<Tq>],
 		ph_feedback: &mut F,
-	) -> (f64, FixedSingleQuadricModel<Binary<f64>>)
+	) -> (R, FixedSingleQuadricModel<Binary<R>>)
 	where
-		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
+		F: FnMut(&Placeholder<Tp, Tc>) -> R,
 	{
 		let dict = qubits
 			.iter()
@@ -202,7 +208,7 @@ where
 			.enumerate()
 			.map(|(i, q)| (q, i))
 			.collect::<HashMap<&Qubit<Tq>, usize>>();
-		let mut c = 0.0;
+		let mut c = R::from_i32(0);
 		let mut model = FixedSingleQuadricModel::new(Binary::new(), qubits.len());
 		for (set, expr) in self.0.iter() {
 			let val = expr.calculate(ph_feedback);
@@ -266,40 +272,47 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc> std::ops::Deref for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> std::ops::Deref for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
-	type Target = HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>>>;
+	type Target = HashMap<BTreeSet<Qubit<Tq>>, StaticExpr<Placeholder<Tp, Tc>, R>>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
-impl<Tp, Tq, Tc> std::ops::DerefMut for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> std::ops::DerefMut for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
 	}
 }
 
-impl<Tp, Tq, Tc> Into<Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> Into<Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
+	Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>: Mul<
+		Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>,
+		Output = Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>,
+	>,
 {
-	fn into(self) -> Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc> {
+	fn into(self) -> Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R> {
 		let mut expr = None;
 		for (set, sexp) in self.0.into_iter() {
-			let e: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc> = set
+			let e = set
 				.into_iter()
 				.fold(sexp.into(), |expr, q| expr * Expr::Binary(q));
 			if let Some(ee) = expr {
@@ -308,21 +321,22 @@ where
 				expr = Some(e);
 			}
 		}
-		expr.unwrap_or(Expr::Number(0))
+		expr.unwrap_or(Expr::Number(R::from_i32(0)))
 	}
 }
 
-impl<Tp, Tq, Tc> From<Tq> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> From<Tq> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	fn from(lb: Tq) -> Self {
 		Expanded(
 			Some((
 				Some(Qubit::new(lb)).into_iter().collect(),
-				StaticExpr::Number(1),
+				StaticExpr::Number(R::from_i32(1)),
 			))
 			.into_iter()
 			.collect(),
@@ -330,24 +344,26 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc> From<StaticExpr<Placeholder<Tp, Tc>>> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> From<StaticExpr<Placeholder<Tp, Tc>, R>> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
-	fn from(e: StaticExpr<Placeholder<Tp, Tc>>) -> Self {
+	fn from(e: StaticExpr<Placeholder<Tp, Tc>, R>) -> Self {
 		let mut ret = HashMap::new();
 		ret.insert(None.into_iter().collect(), e);
 		Expanded(ret)
 	}
 }
 
-impl<Tp, Tq, Tc, RHS> AddAssign<RHS> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R, RHS> AddAssign<RHS> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 	RHS: Into<Self>,
 {
 	#[inline]
@@ -362,11 +378,12 @@ where
 		}
 	}
 }
-impl<Tp, Tq, Tc, RHS> Add<RHS> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R, RHS> Add<RHS> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 	RHS: Into<Self>,
 {
 	type Output = Self;
@@ -377,11 +394,12 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc, RHS> MulAssign<RHS> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R, RHS> MulAssign<RHS> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 	RHS: Into<Self>,
 {
 	#[inline]
@@ -407,11 +425,12 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc, RHS> Mul<RHS> for Expanded<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R, RHS> Mul<RHS> for Expanded<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 	RHS: Into<Self>,
 {
 	type Output = Self;

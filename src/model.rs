@@ -1,28 +1,31 @@
 use crate::compiled::CompiledModel;
 use crate::expanded::Expanded;
-use crate::expr::{Expr, NumberOrFloat};
+use crate::expr::Expr;
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TpType, TqType};
+use annealers::variable::Real;
 use std::collections::HashMap;
 use std::ops::{Add, Mul};
 
 #[derive(Clone, Debug)]
-pub struct Model<Tp, Tq, Tc>
+pub struct Model<Tp, Tq, Tc, R>
 where
 	Tp: TpType, // Placeholder
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
-	expanded: Expanded<Tp, Tq, Tc>,
-	penalties: Expanded<Tp, Tq, Tc>,
-	constraints: Vec<Constraint<Tp, Tq, Tc>>,
+	expanded: Expanded<Tp, Tq, Tc, R>,
+	penalties: Expanded<Tp, Tq, Tc, R>,
+	constraints: Vec<Constraint<Tp, Tq, Tc, R>>,
 }
 
-impl<Tp, Tq, Tc> Model<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> Model<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	pub fn new() -> Self {
 		Self {
@@ -32,7 +35,7 @@ where
 		}
 	}
 
-	pub(crate) fn from<Q: Into<Expanded<Tp, Tq, Tc>>>(q: Q) -> Self {
+	pub(crate) fn from<Q: Into<Expanded<Tp, Tq, Tc, R>>>(q: Q) -> Self {
 		let mut ret = Model::new();
 		ret.expanded = q.into();
 		ret
@@ -49,14 +52,14 @@ where
 	pub fn add_constraint(
 		mut self,
 		lb: Tc,
-		e: Expr<Tp, Tq, Tc>,
+		e: Expr<Tp, Tq, Tc, R>,
 		ph: Option<Placeholder<Tp, Tc>>,
 	) -> Self {
 		self.constraints.push(Constraint::new(lb, e, ph));
 		self
 	}
 
-	pub fn to_compiled(self) -> CompiledModel<Tp, Tq, Tc> {
+	pub fn to_compiled(self) -> CompiledModel<Tp, Tq, Tc, R> {
 		CompiledModel::new(self.expanded + self.penalties, self.constraints)
 	}
 }
@@ -75,12 +78,13 @@ where
 // 	}
 // }
 
-impl<Tp, Tq, Tc, RHS> Add<RHS> for Model<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, RHS, R> Add<RHS> for Model<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 	RHS: Into<Self>,
+	R: Real,
 {
 	type Output = Self;
 	#[inline]
@@ -93,12 +97,13 @@ where
 	}
 }
 
-impl<Tp, Tq, Tc, RHS> Mul<RHS> for Model<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, RHS, R> Mul<RHS> for Model<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
 	RHS: Into<Self>,
+	R: Real,
 {
 	type Output = Self;
 	#[inline]
@@ -112,26 +117,28 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct Constraint<Tp, Tq, Tc>
+pub struct Constraint<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	pub label: Option<Tc>,
-	expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>,
+	expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>,
 	pub placeholder: Option<Placeholder<Tp, Tc>>,
 }
 
-impl<Tp, Tq, Tc> Constraint<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> Constraint<Tp, Tq, Tc, R>
 where
 	Tp: TpType,
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	pub fn new(
 		label: Tc,
-		expr: Expr<Tp, Tq, Tc>,
+		expr: Expr<Tp, Tq, Tc, R>,
 		placeholder: Option<Placeholder<Tp, Tc>>,
 	) -> Self {
 		let expr = expr.map_label(&mut |ltp| Placeholder::Placeholder(ltp), &mut |ltq| {
@@ -144,7 +151,7 @@ where
 		}
 	}
 
-	pub(crate) fn drop_placeholder(self) -> Constraint<(), Tq, Tc> {
+	pub(crate) fn drop_placeholder(self) -> Constraint<(), Tq, Tc, R> {
 		let expr = self
 			.expr
 			.map_label(&mut |lb| lb.drop_placeholder(), &mut std::convert::identity);
@@ -157,16 +164,14 @@ where
 	}
 
 	pub fn is_satisfied(&self, map: &HashMap<&Qubit<Tq>, bool>) -> bool {
-		if let Some(i) = self.expr.calculate_i(map) {
-			i == 0
-		} else if let Some(f) = self.expr.calculate_f(map) {
-			f.abs() < 1.0e-4
+		if let Some(i) = self.expr.calculate(map) {
+			i.as_f64().abs() < 1.0e-4
 		} else {
 			true
 		}
 	}
 
-	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, NumberOrFloat>) -> Self {
+	pub fn feed_dict(mut self, dict: &HashMap<Placeholder<Tp, Tc>, R>) -> Self {
 		self.expr = self.expr.feed_dict(dict);
 		if let Some(p) = &self.placeholder {
 			if let Some(_) = dict.get(p) {
@@ -178,7 +183,7 @@ where
 
 	pub fn from_raw(
 		label: Option<Tc>,
-		expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc>,
+		expr: Expr<Placeholder<Tp, Tc>, Qubit<Tq>, Tc, R>,
 		placeholder: Option<Placeholder<Tp, Tc>>,
 	) -> Self {
 		Self {

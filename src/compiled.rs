@@ -1,33 +1,36 @@
 use crate::expanded::Expanded;
-use crate::expr::{NumberOrFloat, StaticExpr};
+use crate::expr::StaticExpr;
 use crate::model::Constraint;
 use crate::wrapper::{Builder, Placeholder, Qubit};
 use crate::{TcType, TpType, TqType};
 use annealers::model::FixedSingleQuadricModel;
 use annealers::node::Binary;
+use annealers::variable::Real;
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Clone, Debug)]
-pub struct CompiledModel<Tp, Tq, Tc>
+pub struct CompiledModel<Tp, Tq, Tc, R>
 where
 	Tp: TpType, // Placeholder
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
-	expanded: Expanded<Tp, Tq, Tc>,
-	constraints: Vec<Constraint<Tp, Tq, Tc>>,
+	expanded: Expanded<Tp, Tq, Tc, R>,
+	constraints: Vec<Constraint<Tp, Tq, Tc, R>>,
 	builder: Builder<Tq>,
 }
 
-impl<Tp, Tq, Tc> CompiledModel<Tp, Tq, Tc>
+impl<Tp, Tq, Tc, R> CompiledModel<Tp, Tq, Tc, R>
 where
 	Tp: TpType, // Placeholder
 	Tq: TqType,
 	Tc: TcType,
+	R: Real,
 {
 	pub(crate) fn new(
-		expanded: Expanded<Tp, Tq, Tc>,
-		constraints: Vec<Constraint<Tp, Tq, Tc>>,
+		expanded: Expanded<Tp, Tq, Tc, R>,
+		constraints: Vec<Constraint<Tp, Tq, Tc, R>>,
 	) -> Self {
 		let builder = Builder::new();
 		Self {
@@ -38,8 +41,8 @@ where
 	}
 
 	/// Feed real values to fill the placeholders.
-	pub fn feed_dict(self, mut dict: HashMap<Tp, NumberOrFloat>) -> CompiledModel<(), Tq, Tc> {
-		let dict: HashMap<Placeholder<Tp, Tc>, NumberOrFloat> = dict
+	pub fn feed_dict(self, mut dict: HashMap<Tp, R>) -> CompiledModel<(), Tq, Tc, R> {
+		let dict: HashMap<Placeholder<Tp, Tc>, R> = dict
 			.drain()
 			.map(|(k, v)| (Placeholder::Placeholder(k), v))
 			.collect();
@@ -60,7 +63,7 @@ where
 		set: &BTreeSet<Qubit<Tq>>,
 		builder: &mut Builder<Tq>,
 		p: Option<bool>,
-	) -> (Expanded<Tp, Tq, Tc>, Option<Expanded<Tp, Tq, Tc>>) {
+	) -> (Expanded<Tp, Tq, Tc, R>, Option<Expanded<Tp, Tq, Tc, R>>) {
 		let mut exp = Expanded::new();
 		if let Some(p) = p {
 			let d = set.len();
@@ -77,12 +80,12 @@ where
 						for j in 0..d {
 							exp.insert(
 								vec![w.clone(), xs[j].clone()].into_iter().collect(),
-								StaticExpr::Number(-2),
+								StaticExpr::Number(R::from_i32(-2)),
 							);
 						}
 						exp.insert(
 							Some(w).into_iter().collect(),
-							StaticExpr::Number((4 * (i + 1) - 1) as i32),
+							StaticExpr::Number(R::from_i32((4 * (i + 1) - 1) as i32)),
 						);
 					}
 				} else {
@@ -94,12 +97,12 @@ where
 						for j in 0..d {
 							exp.insert(
 								vec![wn.clone(), xs[j].clone()].into_iter().collect(),
-								StaticExpr::Number(-1),
+								StaticExpr::Number(R::from_i32(-1)),
 							);
 						}
 						exp.insert(
 							Some(wn).into_iter().collect(),
-							StaticExpr::Number((2 * n - 1) as i32),
+							StaticExpr::Number(R::from_i32((2 * n - 1) as i32)),
 						);
 					}
 					// sum{i=0 -> n-2} w_i(-2S1 + 4(i + 1) - 1)
@@ -109,12 +112,12 @@ where
 						for j in 0..d {
 							exp.insert(
 								vec![w.clone(), xs[j].clone()].into_iter().collect(),
-								StaticExpr::Number(-2),
+								StaticExpr::Number(R::from_i32(-2)),
 							);
 						}
 						exp.insert(
 							Some(w).into_iter().collect(),
-							StaticExpr::Number((4 * (i + 1) - 1) as i32),
+							StaticExpr::Number(R::from_i32(4 * (i as i32 + 1) - 1)),
 						);
 					}
 				}
@@ -123,7 +126,7 @@ where
 					for j in i + 1..d {
 						exp.insert(
 							vec![xs[i].clone(), xs[j].clone()].into_iter().collect(),
-							StaticExpr::Number(1),
+							StaticExpr::Number(R::from_i32(1)),
 						);
 					}
 				}
@@ -133,12 +136,12 @@ where
 				for x in set.iter() {
 					exp.insert(
 						vec![w.clone(), x.clone()].into_iter().collect(),
-						StaticExpr::Number(1),
+						StaticExpr::Number(R::from_i32(1)),
 					);
 				}
 				exp.insert(
 					Some(w).into_iter().collect(),
-					StaticExpr::Number(1 - d as i32),
+					StaticExpr::Number(R::from_i32(1 - d as i32)),
 				);
 			}
 			(exp, None)
@@ -147,18 +150,21 @@ where
 			// x * y -> min{1 + w * (3 - 2x - 2y)}, xyz = a * w
 			if let &[x, y] = &set.iter().take(2).collect::<Vec<&Qubit<Tq>>>() as &[&Qubit<Tq>] {
 				let w = builder.ancilla();
-				exp.insert(Some(w.clone()).into_iter().collect(), StaticExpr::Number(3));
+				exp.insert(
+					Some(w.clone()).into_iter().collect(),
+					StaticExpr::Number(R::from_i32(3)),
+				);
 				exp.insert(
 					vec![x, &w].into_iter().cloned().collect(),
-					StaticExpr::Number(-2),
+					StaticExpr::Number(R::from_i32(-2)),
 				);
 				exp.insert(
 					(vec![y, &w]).into_iter().cloned().collect(),
-					StaticExpr::Number(-2),
+					StaticExpr::Number(R::from_i32(-2)),
 				);
 				exp.insert(
 					(vec![x, y]).into_iter().cloned().collect(),
-					StaticExpr::Number(1),
+					StaticExpr::Number(R::from_i32(1)),
 				);
 				(Expanded::from_qubit(w), Some(exp))
 			} else {
@@ -170,7 +176,7 @@ where
 	pub(crate) fn get_unsatisfied_constraints(
 		&self,
 		map: &HashMap<&Qubit<Tq>, bool>,
-	) -> Vec<&Constraint<Tp, Tq, Tc>> {
+	) -> Vec<&Constraint<Tp, Tq, Tc, R>> {
 		self.constraints
 			.iter()
 			.filter(|cc| !cc.is_satisfied(map))
@@ -233,9 +239,9 @@ where
 		&self,
 		qubits: &[&Qubit<Tq>],
 		ph_feedback: &mut F,
-	) -> (f64, FixedSingleQuadricModel<Binary<f64>>)
+	) -> (R, FixedSingleQuadricModel<Binary<R>>)
 	where
-		F: FnMut(&Placeholder<Tp, Tc>) -> f64,
+		F: FnMut(&Placeholder<Tp, Tc>) -> R,
 	{
 		self.expanded.generate_qubo(qubits, ph_feedback)
 	}

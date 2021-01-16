@@ -8,7 +8,7 @@
 //! # extern crate rustqubo;
 //! # use rustqubo::Expr;
 //! # use rustqubo::solve::SimpleSolver;
-//! let hmlt = - Expr::Spin("a") * Expr::Spin("b") * 2 + Expr::Spin("a") * 3;
+//! let hmlt = -Expr::Spin("a") * Expr::Spin("b") * Expr::Number(2) + Expr::Spin("a") * Expr::Number(3);
 //! let compiled = hmlt.compile();
 //! let solver = SimpleSolver::new(&compiled);
 //! let (c, qubits) = solver.solve().unwrap();
@@ -16,7 +16,7 @@
 //! println!("{}, {:?}", &c, &qubits);
 //! # assert_eq!(qubits.get(&"a"), Some(&false));
 //! # assert_eq!(qubits.get(&"b"), Some(&false));
-//! # assert_eq!(c, -5.0);
+//! # assert_eq!(c, -5);
 //! ```
 //!
 //! ## Example with constraints
@@ -26,14 +26,14 @@
 //! # use rustqubo::solve::SimpleSolver;
 //! let hmlt = Expr::Constraint{
 //! 		label: "constraint1",
-//! 		expr: Box::new((Expr::Binary(0) + Expr::Binary(1) - 1) ^ 2)
-//! 	} + Expr::Binary(0) * 30;
+//! 		expr: Box::new((Expr::Binary(0) + Expr::Binary(1) - Expr::Number(1)) ^ 2usize)
+//! 	} + Expr::Binary(0) * Expr::Number(30);
 //! let compiled = hmlt.compile();
 //! let solver = SimpleSolver::new(&compiled);
 //! let (c, qubits, unsatisfied) = solver.solve_with_constraints().unwrap();
 //! // displays 0, {0: false, 1: true}, []
 //! println!("{}, {:?}, {:?}", &c, &qubits, &unsatisfied);
-//! # assert_eq!(c, 0.0);
+//! # assert_eq!(c, 0);
 //! # assert_eq!(qubits.get(&0), Some(&false));
 //! # assert_eq!(qubits.get(&1), Some(&true));
 //! # assert_eq!(unsatisfied.len(), 0);
@@ -69,5 +69,5 @@ pub use expr::Expr;
 
 #[test]
 fn expr_test() {
-	let _: Expr<(), _, ()> = 2 * Expr::Binary(("a", "b")) * 3;
+	let _: Expr<(), _, (), i32> = 2i32 * Expr::Binary(("a", "b")) * 3i32;
 }

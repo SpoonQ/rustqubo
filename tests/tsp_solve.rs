@@ -8,19 +8,19 @@ fn run_tsp() {
 	struct TspQubit(usize, usize);
 
 	let cities = 5usize;
-	let hmlt_city = (0..cities).into_iter().fold(Expr::Number(0), |exp, c| {
+	let hmlt_city = (0..cities).into_iter().fold(Expr::Number(0.0), |exp, c| {
 		let inner = (0..cities)
 			.into_iter()
-			.fold(Expr::Number(-1), |e, o| e + Expr::Binary(TspQubit(c, o)));
+			.fold(Expr::Number(-1.0), |e, o| e + Expr::Binary(TspQubit(c, o)));
 		exp + Expr::Constraint {
 			label: format!("city {:}", c),
 			expr: Box::new(inner.clone() * inner),
 		}
 	});
-	let hmlt_order = (0..cities).into_iter().fold(Expr::Number(0), |exp, o| {
+	let hmlt_order = (0..cities).into_iter().fold(Expr::Number(0.0), |exp, o| {
 		let inner = (0..cities)
 			.into_iter()
-			.fold(Expr::Number(-1), |e, c| e + Expr::Binary(TspQubit(c, o)));
+			.fold(Expr::Number(-1.0), |e, c| e + Expr::Binary(TspQubit(c, o)));
 		exp + Expr::Constraint {
 			label: format!("order {:}", o),
 			expr: Box::new(inner.clone() * inner),
@@ -33,11 +33,11 @@ fn run_tsp() {
 		[3.0, 5.0, 3.0, 0.0, 2.5],
 		[4.5, 7.0, 4.5, 2.5, 0.0],
 	];
-	let mut hmlt_distance = Expr::Number(0);
+	let mut hmlt_distance = Expr::Number(0.0);
 	for i in (0..cities).into_iter() {
 		for j in (0..cities).into_iter() {
 			for k in (0..cities).into_iter() {
-				let d_ij = Expr::Float(table[i][j]);
+				let d_ij = Expr::Number(table[i][j]);
 				hmlt_distance = hmlt_distance
 					+ d_ij
 						* Expr::Binary(TspQubit(i, k))
@@ -45,7 +45,7 @@ fn run_tsp() {
 			}
 		}
 	}
-	let hmlt = Expr::Number(10) * (hmlt_city + hmlt_order) + hmlt_distance;
+	let hmlt = Expr::Number(10.0) * (hmlt_city + hmlt_order) + hmlt_distance;
 	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
 	solver.generations = 10;
@@ -65,12 +65,9 @@ fn tsp_test() {
 fn test() {
 	let exp = Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
 	let compiled = exp.compile();
-	println!("{:?}", &compiled);
-	// let compiled = compiled.feed_dict([(a: 1.2), (b:
-	// 2.3)].into_iter().collect());
 	let solver = SimpleSolver::new(&compiled);
 	let (c, qubits) = solver.solve().unwrap();
 	assert_eq!(*qubits.get(&1).unwrap(), true);
 	assert_eq!(*qubits.get(&2).unwrap(), false);
-	assert!((c - 11.0).abs() < 1e-4);
+	assert_eq!(c, 11);
 }

@@ -7,6 +7,7 @@ use annealers::model::{FixedSingleQuadricModel, SingleModel};
 use annealers::node::Binary;
 use annealers::solution::SingleSolution;
 use annealers::solver::{ClassicalSolver, Solver, SolverGenerator, UnstructuredSolverGenerator};
+use annealers::variable::Real;
 use classical_solver::sa::{SimulatedAnnealer, SimulatedAnnealerGenerator};
 
 use rand::rngs::{OsRng, StdRng};
@@ -15,46 +16,51 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-pub struct SimpleSolver<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel, ST: Solver>
-where
+pub struct SimpleSolver<
+	'a,
 	Tq: TqType,
 	Tc: TcType,
-{
-	model: &'a CompiledModel<(), Tq, Tc>,
+	T: UnstructuredSolverGenerator<P>,
+	P: SingleModel,
+	ST: Solver,
+	R: Real,
+> {
+	model: &'a CompiledModel<(), Tq, Tc, R>,
 	qubits: Vec<&'a Qubit<Tq>>,
 	_phantom: PhantomData<(P, ST)>,
 	pub iterations: usize,
 	pub samples: usize,
 	// pub processes: usize,
 	pub generations: usize,
-	pub coeff_strength: f64,
+	pub coeff_strength: R,
 	pub solver_generator: T,
 }
 
-impl<'a, Tq, Tc>
+impl<'a, Tq, Tc, R: Real>
 	SimpleSolver<
 		'a,
 		Tq,
 		Tc,
-		SimulatedAnnealerGenerator<FixedSingleQuadricModel<Binary<f64>>>,
-		FixedSingleQuadricModel<Binary<f64>>,
-		SimulatedAnnealer<FixedSingleQuadricModel<Binary<f64>>, f64>,
+		SimulatedAnnealerGenerator<FixedSingleQuadricModel<Binary<R>>>,
+		FixedSingleQuadricModel<Binary<R>>,
+		SimulatedAnnealer<FixedSingleQuadricModel<Binary<R>>, R>,
+		R,
 	> where
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn new(model: &'a CompiledModel<(), Tq, Tc>) -> Self {
+	pub fn new(model: &'a CompiledModel<(), Tq, Tc, R>) -> Self {
 		Self::with_solver(model, SimulatedAnnealerGenerator::new())
 	}
 }
 
-impl<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel>
-	SimpleSolver<'a, Tq, Tc, T, P, T::SolverType>
+impl<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel, R: Real>
+	SimpleSolver<'a, Tq, Tc, T, P, T::SolverType, R>
 where
 	Tq: TqType,
 	Tc: TcType,
 {
-	pub fn with_solver(model: &'a CompiledModel<(), Tq, Tc>, solver_generator: T) -> Self {
+	pub fn with_solver(model: &'a CompiledModel<(), Tq, Tc, R>, solver_generator: T) -> Self {
 		let qubits = model.get_qubits().into_iter().collect::<Vec<_>>();
 		Self {
 			model,
@@ -62,7 +68,7 @@ where
 			samples: rayon::current_num_threads(),
 			iterations: 10,
 			generations: 30,
-			coeff_strength: 50.0,
+			coeff_strength: R::from_i32(50),
 			solver_generator,
 			_phantom: PhantomData,
 		}
@@ -86,17 +92,18 @@ where
 impl<
 		'a,
 		Tq,
-		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<f64>>, SolverType = ST>,
-		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<f64>>, ErrorType = T::ErrorType>,
-	> SimpleSolver<'a, Tq, (), T, FixedSingleQuadricModel<Binary<f64>>, ST>
+		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
+		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<R>>, ErrorType = T::ErrorType>,
+		R: Real,
+	> SimpleSolver<'a, Tq, (), T, FixedSingleQuadricModel<Binary<R>>, ST, R>
 where
 	Tq: TqType + Send + Sync,
 {
 	pub fn solve(
 		&self,
 	) -> Result<
-		(f64, HashMap<&Tq, bool>),
-		<T as SolverGenerator<FixedSingleQuadricModel<Binary<f64>>>>::ErrorType,
+		(R, HashMap<&Tq, bool>),
+		<T as SolverGenerator<FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		// Drop constraint missing information
 		self.solve_with_constraints().map(|(a, b, _)| (a, b))
@@ -107,9 +114,10 @@ impl<
 		'a,
 		Tq,
 		Tc,
-		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<f64>>, SolverType = ST>,
-		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<f64>>, ErrorType = T::ErrorType>,
-	> SimpleSolver<'a, Tq, Tc, T, FixedSingleQuadricModel<Binary<f64>>, ST>
+		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
+		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<R>>, ErrorType = T::ErrorType>,
+		R: Real,
+	> SimpleSolver<'a, Tq, Tc, T, FixedSingleQuadricModel<Binary<R>>, ST, R>
 where
 	Tq: TqType + Send + Sync,
 	Tc: TcType + Send + Sync,
@@ -118,8 +126,8 @@ where
 	pub fn solve_with_constraints(
 		&self,
 	) -> Result<
-		(f64, HashMap<&Tq, bool>, Vec<&Tc>),
-		<T as SolverGenerator<FixedSingleQuadricModel<Binary<f64>>>>::ErrorType,
+		(R, HashMap<&Tq, bool>, Vec<&Tc>),
+		<T as SolverGenerator<FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
@@ -127,11 +135,11 @@ where
 			let mut phdict: HashMap<&Placeholder<(), Tc>, usize> =
 				ph.iter().map(|p| (*p, 10)).collect();
 			let mut size = ph.len() * 10;
-			let mut old_energy = f64::INFINITY;
+			let mut old_energy = R::MAX;
 			for _ in 0..self.generations {
 				let (c, model) = self.model.generate_qubo(&self.qubits, &mut |p| {
 					if let Some(cnt) = phdict.get(&p) {
-						*cnt as f64 / size as f64 * self.coeff_strength
+						R::from_i32(*cnt as i32) / R::from_i32(size as i32) * self.coeff_strength
 					} else {
 						panic!()
 					}
@@ -151,11 +159,11 @@ where
 					.collect::<Vec<_>>();
 				let min: f64 = fut_ret
 					.iter()
-					.fold(0.0 / 0.0, |m, v| v.energy.unwrap().min(m));
+					.fold(0.0 / 0.0, |m, v| v.energy.unwrap().as_f64().min(m));
 				assert!(min.is_finite());
 				let sol = fut_ret
 					.into_iter()
-					.filter(|r| r.energy.unwrap() == min)
+					.filter(|r| r.energy.unwrap().as_f64() == min)
 					.next()
 					.unwrap();
 				let energy = sol.energy.unwrap();
