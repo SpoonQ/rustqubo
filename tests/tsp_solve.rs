@@ -7,23 +7,23 @@ fn run_tsp() {
 	#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, PartialOrd, Ord)]
 	struct TspQubit(usize, usize);
 
-	let cities = 5usize;
-	let hmlt_city = (0..cities).into_iter().fold(Expr::Number(0.0), |exp, c| {
+	let cities = 5;
+	let hmlt_city = (0..cities).into_iter().fold(Expr::zero(), |exp, c| {
 		let inner = (0..cities)
 			.into_iter()
-			.fold(Expr::Number(-1.0), |e, o| e + Expr::Binary(TspQubit(c, o)));
+			.fold(-Expr::one(), |e, o| e + Expr::Binary(TspQubit(c, o)));
 		exp + Expr::Constraint {
 			label: format!("city {:}", c),
-			expr: Box::new(inner.clone() * inner),
+			expr: Box::new(inner ^ 2),
 		}
 	});
-	let hmlt_order = (0..cities).into_iter().fold(Expr::Number(0.0), |exp, o| {
+	let hmlt_order = (0..cities).into_iter().fold(Expr::zero(), |exp, o| {
 		let inner = (0..cities)
 			.into_iter()
-			.fold(Expr::Number(-1.0), |e, c| e + Expr::Binary(TspQubit(c, o)));
+			.fold(-Expr::one(), |e, c| e + Expr::Binary(TspQubit(c, o)));
 		exp + Expr::Constraint {
 			label: format!("order {:}", o),
-			expr: Box::new(inner.clone() * inner),
+			expr: Box::new(inner ^ 2),
 		}
 	});
 	let table = [
@@ -33,19 +33,18 @@ fn run_tsp() {
 		[3.0, 5.0, 3.0, 0.0, 2.5],
 		[4.5, 7.0, 4.5, 2.5, 0.0],
 	];
-	let mut hmlt_distance = Expr::Number(0.0);
+	let mut hmlt_distance = Expr::zero();
 	for i in (0..cities).into_iter() {
 		for j in (0..cities).into_iter() {
 			for k in (0..cities).into_iter() {
-				let d_ij = Expr::Number(table[i][j]);
 				hmlt_distance = hmlt_distance
-					+ d_ij
+					+ table[i][j]
 						* Expr::Binary(TspQubit(i, k))
 						* Expr::Binary(TspQubit(j, (k + 1) % cities))
 			}
 		}
 	}
-	let hmlt = Expr::Number(10.0) * (hmlt_city + hmlt_order) + hmlt_distance;
+	let hmlt = 10.0_f64 * (hmlt_city + hmlt_order) + hmlt_distance;
 	let compiled = hmlt.compile();
 	let mut solver = SimpleSolver::new(&compiled);
 	solver.generations = 10;
@@ -63,11 +62,11 @@ fn tsp_test() {
 
 #[test]
 fn test() {
-	let exp = Expr::Binary(1) * Expr::Number(-1) + Expr::Binary(2) + Expr::Number(12);
+	let exp = -10_i32 * Expr::Binary(1) + 5_i32 * Expr::Binary(2) + 12_i32;
 	let compiled = exp.compile();
 	let solver = SimpleSolver::new(&compiled);
 	let (c, qubits) = solver.solve().unwrap();
 	assert_eq!(*qubits.get(&1).unwrap(), true);
 	assert_eq!(*qubits.get(&2).unwrap(), false);
-	assert_eq!(c, 11);
+	assert_eq!(c, 2);
 }

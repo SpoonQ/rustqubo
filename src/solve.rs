@@ -3,7 +3,7 @@ extern crate classical_solver;
 use crate::compiled::CompiledModel;
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TqType};
-use annealers::model::{FixedSingleQuadricModel, SingleModel};
+use annealers::model::{FixedSingleQuadricModel, SingleModelView};
 use annealers::node::Binary;
 use annealers::solution::SingleSolution;
 use annealers::solver::{ClassicalSolver, Solver, SolverGenerator, UnstructuredSolverGenerator};
@@ -15,13 +15,12 @@ use rand::SeedableRng;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-
 pub struct SimpleSolver<
 	'a,
 	Tq: TqType,
 	Tc: TcType,
-	T: UnstructuredSolverGenerator<P>,
-	P: SingleModel,
+	T: UnstructuredSolverGenerator<'static, P>,
+	P: SingleModelView,
 	ST: Solver,
 	R: Real,
 > {
@@ -41,9 +40,9 @@ impl<'a, Tq, Tc, R: Real>
 		'a,
 		Tq,
 		Tc,
-		SimulatedAnnealerGenerator<FixedSingleQuadricModel<Binary<R>>>,
+		SimulatedAnnealerGenerator<'static, FixedSingleQuadricModel<Binary<R>>>,
 		FixedSingleQuadricModel<Binary<R>>,
-		SimulatedAnnealer<FixedSingleQuadricModel<Binary<R>>, R>,
+		SimulatedAnnealer<'static, FixedSingleQuadricModel<Binary<R>>, R>,
 		R,
 	> where
 	Tq: TqType,
@@ -54,7 +53,7 @@ impl<'a, Tq, Tc, R: Real>
 	}
 }
 
-impl<'a, Tq, Tc, T: UnstructuredSolverGenerator<P>, P: SingleModel, R: Real>
+impl<'a, Tq, Tc, T: UnstructuredSolverGenerator<'static, P>, P: SingleModelView, R: Real>
 	SimpleSolver<'a, Tq, Tc, T, P, T::SolverType, R>
 where
 	Tq: TqType,
@@ -92,7 +91,7 @@ where
 impl<
 		'a,
 		Tq,
-		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
+		T: UnstructuredSolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
 		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<R>>, ErrorType = T::ErrorType>,
 		R: Real,
 	> SimpleSolver<'a, Tq, (), T, FixedSingleQuadricModel<Binary<R>>, ST, R>
@@ -103,7 +102,7 @@ where
 		&self,
 	) -> Result<
 		(R, HashMap<&Tq, bool>),
-		<T as SolverGenerator<FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
+		<T as SolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		// Drop constraint missing information
 		self.solve_with_constraints().map(|(a, b, _)| (a, b))
@@ -114,7 +113,7 @@ impl<
 		'a,
 		Tq,
 		Tc,
-		T: UnstructuredSolverGenerator<FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
+		T: UnstructuredSolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>, SolverType = ST>,
 		ST: ClassicalSolver<SolutionType = SingleSolution<Binary<R>>, ErrorType = T::ErrorType>,
 		R: Real,
 	> SimpleSolver<'a, Tq, Tc, T, FixedSingleQuadricModel<Binary<R>>, ST, R>
@@ -127,7 +126,7 @@ where
 		&self,
 	) -> Result<
 		(R, HashMap<&Tq, bool>, Vec<&Tc>),
-		<T as SolverGenerator<FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
+		<T as SolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
@@ -144,19 +143,24 @@ where
 						panic!()
 					}
 				});
-				let fut_ret = std::iter::repeat_with(|| self.solver_generator.generate(&model))
-					.take(self.samples)
-					.collect::<Result<Vec<_>, _>>()?
-					.par_iter()
-					.map(|solver| {
-						let mut r = StdRng::from_rng(OsRng).unwrap();
-						solver.solve_with_rng(&mut r).map(|v| v.into_iter())
+				let fut_ret = std::iter::repeat_with(|| {
+					self.solver_generator.generate(unsafe {
+						// SAFETY: model lives longer than solver
+						std::mem::transmute(&model as *const FixedSingleQuadricModel<_>)
 					})
-					.collect::<Result<Vec<_>, _>>()?
-					.into_iter()
-					.flat_map(std::convert::identity)
-					.map(|sol| sol.with_energy(&model))
-					.collect::<Vec<_>>();
+				})
+				.take(self.samples)
+				.collect::<Result<Vec<_>, _>>()?
+				.par_iter()
+				.map(|solver| {
+					let mut r = StdRng::from_rng(OsRng).unwrap();
+					solver.solve_with_rng(&mut r).map(|v| v.into_iter())
+				})
+				.collect::<Result<Vec<_>, _>>()?
+				.into_iter()
+				.flat_map(std::convert::identity)
+				.map(|sol| sol.with_energy(&model))
+				.collect::<Vec<_>>();
 				let min: f64 = fut_ret
 					.iter()
 					.fold(0.0 / 0.0, |m, v| v.energy.unwrap().as_f64().min(m));

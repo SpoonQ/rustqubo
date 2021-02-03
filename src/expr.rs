@@ -2,7 +2,7 @@ use crate::compiled::CompiledModel;
 use crate::model::Model;
 use crate::wrapper::Placeholder;
 use crate::{TcType, TpType, TqType};
-use annealers::variable::{ConvertFrom, ConvertTo, ConvertWith, Real};
+use annealers::variable::{ConvertFrom, Real};
 use std::collections::{BTreeSet, HashMap};
 use std::mem::MaybeUninit;
 use std::ops::{Add, AddAssign, BitXor, BitXorAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -35,6 +35,14 @@ where
 	R: Real,
 	Self: Mul<Self, Output = Self>,
 {
+	pub fn zero() -> Self {
+		Self::Number(R::from_i32(0))
+	}
+
+	pub fn one() -> Self {
+		Self::Number(R::from_i32(1))
+	}
+
 	pub fn map<F>(self, f: &mut F) -> Self
 	where
 		F: FnMut(Self) -> Self,
@@ -123,6 +131,7 @@ where
 		self.to_model().to_compiled().reduce_order(2)
 	}
 
+	#[allow(unused)] // TODO: ?
 	fn map_number<R2: ConvertFrom<R>>(self) -> Expr<Tp, Tq, Tc, R2> {
 		match self {
 			Self::Number(n) => Expr::Number(<R2 as ConvertFrom<R>>::convert_from(n)),
@@ -537,7 +546,7 @@ where
 			false
 		};
 		match &self {
-			Self::Add(v) | Self::Mul(v) => {
+			Self::Add(_) | Self::Mul(_) => {
 				let v = if is_add {
 					Self::expand_add(self)
 				} else {
