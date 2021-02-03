@@ -202,57 +202,96 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">anneal</span>::{<span class="ident">Annealer</span>, <span class="ident">AnnealerInfo</span>, <span class="ident">InternalAnnealerInfo</span>, <span class="ident">QubitState</span>};
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">classical_solver</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">compiled</span>::<span class="ident">CompiledModel</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wrapper</span>::{<span class="ident">Placeholder</span>, <span class="ident">Qubit</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TcType</span>, <span class="ident">TqType</span>};
-<span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">rngs</span>::{<span class="ident">OsRng</span>, <span class="ident">SmallRng</span>};
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">model</span>::{<span class="ident">FixedSingleQuadricModel</span>, <span class="ident">SingleModelView</span>};
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">node</span>::<span class="ident">Binary</span>;
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">solution</span>::<span class="ident">SingleSolution</span>;
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">solver</span>::{<span class="ident">ClassicalSolver</span>, <span class="ident">Solver</span>, <span class="ident">SolverGenerator</span>, <span class="ident">UnstructuredSolverGenerator</span>};
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">variable</span>::<span class="ident">Real</span>;
+<span class="kw">use</span> <span class="ident">classical_solver</span>::<span class="ident">sa</span>::{<span class="ident">SimulatedAnnealer</span>, <span class="ident">SimulatedAnnealerGenerator</span>};
+
+<span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">rngs</span>::{<span class="ident">OsRng</span>, <span class="ident">StdRng</span>};
 <span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">SeedableRng</span>;
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
-
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>: <span class="ident">AnnealerInfo</span><span class="op">&gt;</span>
-<span class="kw">where</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">PhantomData</span>;
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span>
+	<span class="lifetime">&#39;a</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
-{
-	<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>,
+	<span class="ident">T</span>: <span class="ident">UnstructuredSolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">P</span><span class="op">&gt;</span>,
+	<span class="ident">P</span>: <span class="ident">SingleModelView</span>,
+	<span class="ident">ST</span>: <span class="ident">Solver</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
+<span class="op">&gt;</span> {
+	<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>,
 	<span class="ident">qubits</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Qubit</span><span class="op">&lt;</span><span class="ident">Tq</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+	<span class="ident">_phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span>(<span class="ident">P</span>, <span class="ident">ST</span>)<span class="op">&gt;</span>,
 	<span class="kw">pub</span> <span class="ident">iterations</span>: <span class="ident">usize</span>,
 	<span class="kw">pub</span> <span class="ident">samples</span>: <span class="ident">usize</span>,
 	<span class="comment">// pub processes: usize,</span>
 	<span class="kw">pub</span> <span class="ident">generations</span>: <span class="ident">usize</span>,
-	<span class="kw">pub</span> <span class="ident">coeff_strength</span>: <span class="ident">f64</span>,
-	<span class="kw">pub</span> <span class="ident">annealer_info</span>: <span class="ident">T</span>,
+	<span class="kw">pub</span> <span class="ident">coeff_strength</span>: <span class="ident">R</span>,
+	<span class="kw">pub</span> <span class="ident">solver_generator</span>: <span class="ident">T</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">InternalAnnealerInfo</span><span class="op">&gt;</span>
-<span class="kw">where</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span>: <span class="ident">Real</span><span class="op">&gt;</span>
+	<span class="ident">SimpleSolver</span><span class="op">&lt;</span>
+		<span class="lifetime">&#39;a</span>,
+		<span class="ident">Tq</span>,
+		<span class="ident">Tc</span>,
+		<span class="ident">SimulatedAnnealerGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+		<span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+		<span class="ident">SimulatedAnnealer</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">R</span><span class="op">&gt;</span>,
+		<span class="ident">R</span>,
+	<span class="op">&gt;</span> <span class="kw">where</span>
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
 {
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="self">Self</span>::<span class="ident">with_annealer</span>(<span class="ident">model</span>, <span class="ident">InternalAnnealerInfo</span>::<span class="ident">new</span>())
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+		<span class="self">Self</span>::<span class="ident">with_solver</span>(<span class="ident">model</span>, <span class="ident">SimulatedAnnealerGenerator</span>::<span class="ident">new</span>())
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>: <span class="ident">AnnealerInfo</span><span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>: <span class="ident">UnstructuredSolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">P</span><span class="op">&gt;</span>, <span class="ident">P</span>: <span class="ident">SingleModelView</span>, <span class="ident">R</span>: <span class="ident">Real</span><span class="op">&gt;</span>
+	<span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>, <span class="ident">P</span>, <span class="ident">T</span>::<span class="ident">SolverType</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
 {
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_annealer</span>(<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">annealer_info</span>: <span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_solver</span>(<span class="ident">model</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span>(), <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>, <span class="ident">solver_generator</span>: <span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="kw">let</span> <span class="ident">qubits</span> <span class="op">=</span> <span class="ident">model</span>.<span class="ident">get_qubits</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 		<span class="self">Self</span> {
 			<span class="ident">model</span>,
 			<span class="ident">qubits</span>,
 			<span class="ident">samples</span>: <span class="ident">rayon</span>::<span class="ident">current_num_threads</span>(),
-			<span class="comment">// processes: 1,</span>
 			<span class="ident">iterations</span>: <span class="number">10</span>,
 			<span class="ident">generations</span>: <span class="number">30</span>,
-			<span class="ident">coeff_strength</span>: <span class="number">50.0</span>,
-			<span class="ident">annealer_info</span>,
+			<span class="ident">coeff_strength</span>: <span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">50</span>),
+			<span class="ident">solver_generator</span>,
+			<span class="ident">_phantom</span>: <span class="ident">PhantomData</span>,
 		}
 	}
 
@@ -268,43 +307,38 @@
 			})
 			.<span class="ident">collect</span>()
 	}
-
-	<span class="kw">fn</span> <span class="ident">calculate_energy</span>(
-		<span class="ident">state</span>: <span class="kw-2">&amp;</span><span class="ident">QubitState</span>,
-		<span class="ident">c</span>: <span class="ident">f64</span>,
-		<span class="ident">h</span>: <span class="kw-2">&amp;</span>[<span class="ident">f64</span>],
-		<span class="ident">neighbors</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">f64</span>)<span class="op">&gt;</span>],
-	) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">energy</span> <span class="op">=</span> <span class="ident">c</span>;
-		<span class="kw">for</span> (<span class="ident">i</span>, (<span class="ident">h</span>, <span class="ident">neigh</span>)) <span class="kw">in</span> <span class="ident">h</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">neighbors</span>.<span class="ident">iter</span>()).<span class="ident">enumerate</span>() {
-			<span class="kw">if</span> <span class="op">!</span><span class="ident">state</span>.<span class="ident">get</span>(<span class="ident">i</span>) {
-				<span class="kw">continue</span>;
-			}
-			<span class="ident">energy</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">h</span>;
-			<span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">coeff</span>) <span class="kw">in</span> <span class="ident">neigh</span>.<span class="ident">iter</span>() {
-				<span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">j</span> {
-					<span class="kw">break</span>;
-				}
-				<span class="kw">if</span> <span class="ident">state</span>.<span class="ident">get</span>(<span class="kw-2">*</span><span class="ident">j</span>) {
-					<span class="ident">energy</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">coeff</span>;
-				}
-			}
-		}
-		<span class="ident">energy</span>
-	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">T</span>: <span class="ident">AnnealerInfo</span><span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, (), <span class="ident">T</span><span class="op">&gt;</span>
+<span class="comment">// TODO: implement where ST: AsyncSolver</span>
+<span class="kw">impl</span><span class="op">&lt;</span>
+		<span class="lifetime">&#39;a</span>,
+		<span class="ident">Tq</span>,
+		<span class="ident">T</span>: <span class="ident">UnstructuredSolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">SolverType</span> <span class="op">=</span> <span class="ident">ST</span><span class="op">&gt;</span>,
+		<span class="ident">ST</span>: <span class="ident">ClassicalSolver</span><span class="op">&lt;</span><span class="ident">SolutionType</span> <span class="op">=</span> <span class="ident">SingleSolution</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ErrorType</span> <span class="op">=</span> <span class="ident">T</span>::<span class="ident">ErrorType</span><span class="op">&gt;</span>,
+		<span class="ident">R</span>: <span class="ident">Real</span>,
+	<span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, (), <span class="ident">T</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ST</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tq</span>: <span class="ident">TqType</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
 {
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">solve</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">f64</span>, <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>), <span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">AnnealerInfo</span><span class="op">&gt;</span>::<span class="ident">ErrorType</span><span class="op">&gt;</span> {
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">solve</span>(
+		<span class="kw-2">&amp;</span><span class="self">self</span>,
+	) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>
+		(<span class="ident">R</span>, <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>),
+		<span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">SolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">ErrorType</span>,
+	<span class="op">&gt;</span> {
 		<span class="comment">// Drop constraint missing information</span>
 		<span class="self">self</span>.<span class="ident">solve_with_constraints</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="kw">_</span>)<span class="op">|</span> (<span class="ident">a</span>, <span class="ident">b</span>))
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>: <span class="ident">AnnealerInfo</span><span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span>
+		<span class="lifetime">&#39;a</span>,
+		<span class="ident">Tq</span>,
+		<span class="ident">Tc</span>,
+		<span class="ident">T</span>: <span class="ident">UnstructuredSolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">SolverType</span> <span class="op">=</span> <span class="ident">ST</span><span class="op">&gt;</span>,
+		<span class="ident">ST</span>: <span class="ident">ClassicalSolver</span><span class="op">&lt;</span><span class="ident">SolutionType</span> <span class="op">=</span> <span class="ident">SingleSolution</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ErrorType</span> <span class="op">=</span> <span class="ident">T</span>::<span class="ident">ErrorType</span><span class="op">&gt;</span>,
+		<span class="ident">R</span>: <span class="ident">Real</span>,
+	<span class="op">&gt;</span> <span class="ident">SimpleSolver</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">T</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ST</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tq</span>: <span class="ident">TqType</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
@@ -312,92 +346,92 @@
 	<span class="doccomment">/// Solve the model using internal annealer.</span>
 	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">solve_with_constraints</span>(
 		<span class="kw-2">&amp;</span><span class="self">self</span>,
-	) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">f64</span>, <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tc</span><span class="op">&gt;</span>), <span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">AnnealerInfo</span><span class="op">&gt;</span>::<span class="ident">ErrorType</span><span class="op">&gt;</span> {
+	) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>
+		(<span class="ident">R</span>, <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tc</span><span class="op">&gt;</span>),
+		<span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">SolverGenerator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="ident">Binary</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">ErrorType</span>,
+	<span class="op">&gt;</span> {
 		<span class="kw">let</span> <span class="ident">ph</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">model</span>.<span class="ident">get_placeholders</span>();
 		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 		<span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">iterations</span> {
 			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">phdict</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Placeholder</span><span class="op">&lt;</span>(), <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span>
 				<span class="ident">ph</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">p</span>, <span class="number">10</span>)).<span class="ident">collect</span>();
 			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">ph</span>.<span class="ident">len</span>() <span class="op">*</span> <span class="number">10</span>;
-			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">old_energy</span> <span class="op">=</span> <span class="ident">f64</span>::<span class="ident">INFINITY</span>;
+			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">old_energy</span> <span class="op">=</span> <span class="ident">R</span>::<span class="ident">MAX</span>;
 			<span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">generations</span> {
-				<span class="kw">let</span> (<span class="ident">c</span>, <span class="ident">h</span>, <span class="ident">neighbors</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">model</span>.<span class="ident">generate_qubo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qubits</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
+				<span class="kw">let</span> (<span class="ident">c</span>, <span class="ident">model</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">model</span>.<span class="ident">generate_qubo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qubits</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
 					<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cnt</span>) <span class="op">=</span> <span class="ident">phdict</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>) {
-						<span class="kw-2">*</span><span class="ident">cnt</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">size</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">coeff_strength</span>
+						<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="kw-2">*</span><span class="ident">cnt</span> <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">/</span> <span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">*</span> <span class="self">self</span>.<span class="ident">coeff_strength</span>
 					} <span class="kw">else</span> {
 						<span class="macro">panic</span><span class="macro">!</span>()
 					}
 				});
-				<span class="comment">// let neighbors = neighbors</span>
-				<span class="comment">// 	.iter()</span>
-				<span class="comment">// 	.map(|v| v.deref())</span>
-				<span class="comment">// 	.collect::&lt;Vec&lt;&amp;[(usize, f64)]&gt;&gt;();</span>
-				<span class="kw">let</span> <span class="ident">fut_ret</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">repeat</span>((<span class="ident">h</span>, <span class="ident">neighbors</span>))
-					.<span class="ident">take</span>(<span class="self">self</span>.<span class="ident">samples</span>)
-					.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-					.<span class="ident">par_iter</span>()
-					.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">h</span>, <span class="ident">neighbors</span>)<span class="op">|</span> {
-						<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SmallRng</span>::<span class="ident">from_rng</span>(<span class="ident">OsRng</span>).<span class="ident">unwrap</span>();
-						<span class="kw">match</span> <span class="self">self</span>.<span class="ident">annealer_info</span>.<span class="ident">build</span>(<span class="ident">h</span>.<span class="ident">clone</span>(), <span class="ident">neighbors</span>.<span class="ident">clone</span>()) {
-							<span class="prelude-val">Ok</span>(<span class="ident">annealer</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">annealer</span>.<span class="ident">anneal</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">state</span><span class="op">|</span> {
-								(<span class="self">Self</span>::<span class="ident">calculate_energy</span>(<span class="kw-2">&amp;</span><span class="ident">state</span>, <span class="ident">c</span>, <span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="ident">neighbors</span>), <span class="ident">state</span>)
-							}),
-							<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-						}
+				<span class="kw">let</span> <span class="ident">fut_ret</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">repeat_with</span>(<span class="op">|</span><span class="op">|</span> {
+					<span class="self">self</span>.<span class="ident">solver_generator</span>.<span class="ident">generate</span>(<span class="kw">unsafe</span> {
+						<span class="comment">// SAFETY: model lives longer than solver</span>
+						<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">transmute</span>(<span class="kw-2">&amp;</span><span class="ident">model</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">FixedSingleQuadricModel</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>)
 					})
-					.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-				<span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span>
-					<span class="ident">fut_ret</span>
-						.<span class="ident">iter</span>()
-						.<span class="ident">fold</span>(<span class="number">0.0</span> <span class="op">/</span> <span class="number">0.0</span>, <span class="op">|</span><span class="ident">m</span>, <span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">v</span> { <span class="ident">v</span>.<span class="number">0</span>.<span class="ident">max</span>(<span class="ident">m</span>) } <span class="kw">else</span> { <span class="ident">m</span> });
-				<span class="kw">if</span> <span class="ident">max</span>.<span class="ident">is_infinite</span>() {
-					<span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">fut_ret</span>.<span class="ident">into_iter</span>().<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">unwrap_err</span>());
-				} <span class="kw">else</span> {
-					<span class="kw">let</span> (<span class="ident">energy</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">fut_ret</span>
-						.<span class="ident">into_iter</span>()
-						.<span class="ident">filter</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">e</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">r</span> { <span class="kw-2">*</span><span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">max</span> } <span class="kw">else</span> { <span class="bool-val">false</span> })
-						.<span class="ident">next</span>()
-						.<span class="ident">unwrap</span>()
-						.<span class="ident">unwrap</span>();
-					<span class="kw">if</span> <span class="ident">old_energy</span> <span class="op">&lt;</span> <span class="ident">energy</span> {
-						<span class="kw">continue</span>;
+				})
+				.<span class="ident">take</span>(<span class="self">self</span>.<span class="ident">samples</span>)
+				.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>
+				.<span class="ident">par_iter</span>()
+				.<span class="ident">map</span>(<span class="op">|</span><span class="ident">solver</span><span class="op">|</span> {
+					<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">StdRng</span>::<span class="ident">from_rng</span>(<span class="ident">OsRng</span>).<span class="ident">unwrap</span>();
+					<span class="ident">solver</span>.<span class="ident">solve_with_rng</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">into_iter</span>())
+				})
+				.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>
+				.<span class="ident">into_iter</span>()
+				.<span class="ident">flat_map</span>(<span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">identity</span>)
+				.<span class="ident">map</span>(<span class="op">|</span><span class="ident">sol</span><span class="op">|</span> <span class="ident">sol</span>.<span class="ident">with_energy</span>(<span class="kw-2">&amp;</span><span class="ident">model</span>))
+				.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+				<span class="kw">let</span> <span class="ident">min</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="ident">fut_ret</span>
+					.<span class="ident">iter</span>()
+					.<span class="ident">fold</span>(<span class="number">0.0</span> <span class="op">/</span> <span class="number">0.0</span>, <span class="op">|</span><span class="ident">m</span>, <span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">energy</span>.<span class="ident">unwrap</span>().<span class="ident">as_f64</span>().<span class="ident">min</span>(<span class="ident">m</span>));
+				<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">min</span>.<span class="ident">is_finite</span>());
+				<span class="kw">let</span> <span class="ident">sol</span> <span class="op">=</span> <span class="ident">fut_ret</span>
+					.<span class="ident">into_iter</span>()
+					.<span class="ident">filter</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="ident">energy</span>.<span class="ident">unwrap</span>().<span class="ident">as_f64</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">min</span>)
+					.<span class="ident">next</span>()
+					.<span class="ident">unwrap</span>();
+				<span class="kw">let</span> <span class="ident">energy</span> <span class="op">=</span> <span class="ident">sol</span>.<span class="ident">energy</span>.<span class="ident">unwrap</span>();
+				<span class="comment">// println!(&quot;{}, {}, {}&quot;, min, old_energy, energy);</span>
+				<span class="kw">if</span> <span class="ident">old_energy</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">energy</span> {
+					<span class="kw">continue</span>;
+				}
+				<span class="ident">old_energy</span> <span class="op">=</span> <span class="ident">energy</span>;
+				<span class="kw">let</span> <span class="ident">ans</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Qubit</span><span class="op">&lt;</span><span class="ident">Tq</span><span class="op">&gt;</span>, <span class="ident">bool</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+					.<span class="ident">qubits</span>
+					.<span class="ident">iter</span>()
+					.<span class="ident">enumerate</span>()
+					.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">q</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">q</span>, <span class="ident">sol</span>[<span class="ident">i</span>]))
+					.<span class="ident">collect</span>();
+				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraint_labels</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+				<span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">model</span>.<span class="ident">get_unsatisfied_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">ans</span>) {
+					<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ph</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">placeholder</span> {
+						<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">point</span>) <span class="op">=</span> <span class="ident">phdict</span>.<span class="ident">get_mut</span>(<span class="ident">ph</span>) {
+							<span class="kw-2">*</span><span class="ident">point</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+							<span class="ident">size</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+						}
 					}
-					<span class="ident">old_energy</span> <span class="op">=</span> <span class="ident">energy</span>;
-					<span class="kw">let</span> <span class="ident">ans</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Qubit</span><span class="op">&lt;</span><span class="ident">Tq</span><span class="op">&gt;</span>, <span class="ident">bool</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-						.<span class="ident">qubits</span>
-						.<span class="ident">iter</span>()
-						.<span class="ident">enumerate</span>()
-						.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">q</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">q</span>, <span class="ident">state</span>.<span class="ident">get</span>(<span class="ident">i</span>)))
-						.<span class="ident">collect</span>();
-					<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraint_labels</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-					<span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">model</span>.<span class="ident">get_unsatisfied_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">ans</span>) {
-						<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ph</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">placeholder</span> {
-							<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">point</span>) <span class="op">=</span> <span class="ident">phdict</span>.<span class="ident">get_mut</span>(<span class="ident">ph</span>) {
-								<span class="kw-2">*</span><span class="ident">point</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-								<span class="ident">size</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+					<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">label</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">label</span> {
+						<span class="ident">constraint_labels</span>.<span class="ident">push</span>(<span class="ident">label</span>);
+					}
+				}
+				<span class="kw">let</span> <span class="ident">is_satisfied</span> <span class="op">=</span> <span class="ident">constraint_labels</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
+				<span class="ident">ret</span> <span class="op">=</span> <span class="prelude-val">Some</span>((
+					<span class="ident">energy</span> <span class="op">+</span> <span class="ident">c</span>,
+					<span class="ident">ans</span>.<span class="ident">into_iter</span>()
+						.<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">q</span>, <span class="ident">b</span>)<span class="op">|</span> {
+							<span class="kw">if</span> <span class="kw">let</span> <span class="ident">Qubit</span>::<span class="ident">Qubit</span>(<span class="ident">q</span>) <span class="op">=</span> <span class="ident">q</span> {
+								<span class="prelude-val">Some</span>((<span class="ident">q</span>, <span class="ident">b</span>))
+							} <span class="kw">else</span> {
+								<span class="prelude-val">None</span>
 							}
-						}
-						<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">label</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">label</span> {
-							<span class="ident">constraint_labels</span>.<span class="ident">push</span>(<span class="ident">label</span>);
-						}
-					}
-					<span class="kw">let</span> <span class="ident">is_satisfied</span> <span class="op">=</span> <span class="ident">constraint_labels</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
-					<span class="ident">ret</span> <span class="op">=</span> <span class="prelude-val">Some</span>((
-						<span class="ident">energy</span>,
-						<span class="ident">ans</span>.<span class="ident">into_iter</span>()
-							.<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">q</span>, <span class="ident">b</span>)<span class="op">|</span> {
-								<span class="kw">if</span> <span class="kw">let</span> <span class="ident">Qubit</span>::<span class="ident">Qubit</span>(<span class="ident">q</span>) <span class="op">=</span> <span class="ident">q</span> {
-									<span class="prelude-val">Some</span>((<span class="ident">q</span>, <span class="ident">b</span>))
-								} <span class="kw">else</span> {
-									<span class="prelude-val">None</span>
-								}
-							})
-							.<span class="ident">collect</span>(),
-						<span class="ident">constraint_labels</span>,
-					));
-					<span class="kw">if</span> <span class="ident">is_satisfied</span> {
-						<span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">ret</span>.<span class="ident">unwrap</span>());
-					}
+						})
+						.<span class="ident">collect</span>(),
+					<span class="ident">constraint_labels</span>,
+				));
+				<span class="kw">if</span> <span class="ident">is_satisfied</span> {
+					<span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">ret</span>.<span class="ident">unwrap</span>());
 				}
 			}
 		}

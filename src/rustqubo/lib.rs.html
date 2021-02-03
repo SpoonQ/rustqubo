@@ -73,6 +73,7 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
+<span id="73">73</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! RustQUBO is a powerful library to create QUBO from polynomial expressions</span>
 <span class="doccomment">//! with constraints and placeholders.</span>
@@ -84,7 +85,7 @@
 <span class="doccomment">//! # extern crate rustqubo;</span>
 <span class="doccomment">//! # use rustqubo::Expr;</span>
 <span class="doccomment">//! # use rustqubo::solve::SimpleSolver;</span>
-<span class="doccomment">//! let hmlt = - Expr::Spin(&quot;a&quot;) * Expr::Spin(&quot;b&quot;) * 2 + Expr::Spin(&quot;a&quot;) * 3;</span>
+<span class="doccomment">//! let hmlt = -Expr::Spin(&quot;a&quot;) * Expr::Spin(&quot;b&quot;) * Expr::Number(2) + Expr::Spin(&quot;a&quot;) * Expr::Number(3);</span>
 <span class="doccomment">//! let compiled = hmlt.compile();</span>
 <span class="doccomment">//! let solver = SimpleSolver::new(&amp;compiled);</span>
 <span class="doccomment">//! let (c, qubits) = solver.solve().unwrap();</span>
@@ -92,7 +93,7 @@
 <span class="doccomment">//! println!(&quot;{}, {:?}&quot;, &amp;c, &amp;qubits);</span>
 <span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;a&quot;), Some(&amp;false));</span>
 <span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;b&quot;), Some(&amp;false));</span>
-<span class="doccomment">//! # assert_eq!(c, -5.0);</span>
+<span class="doccomment">//! # assert_eq!(c, -5);</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Example with constraints</span>
@@ -102,14 +103,14 @@
 <span class="doccomment">//! # use rustqubo::solve::SimpleSolver;</span>
 <span class="doccomment">//! let hmlt = Expr::Constraint{</span>
 <span class="doccomment">//! 		label: &quot;constraint1&quot;,</span>
-<span class="doccomment">//! 		expr: Box::new((Expr::Binary(0) + Expr::Binary(1) - 1) ^ 2)</span>
-<span class="doccomment">//! 	} + Expr::Binary(0) * 20;</span>
+<span class="doccomment">//! 		expr: Box::new((Expr::Binary(0) + Expr::Binary(1) - Expr::Number(1)) ^ 2usize)</span>
+<span class="doccomment">//! 	} + Expr::Binary(0) * Expr::Number(30);</span>
 <span class="doccomment">//! let compiled = hmlt.compile();</span>
 <span class="doccomment">//! let solver = SimpleSolver::new(&amp;compiled);</span>
 <span class="doccomment">//! let (c, qubits, unsatisfied) = solver.solve_with_constraints().unwrap();</span>
 <span class="doccomment">//! // displays 0, {0: false, 1: true}, []</span>
 <span class="doccomment">//! println!(&quot;{}, {:?}, {:?}&quot;, &amp;c, &amp;qubits, &amp;unsatisfied);</span>
-<span class="doccomment">//! # assert_eq!(c, 0.0);</span>
+<span class="doccomment">//! # assert_eq!(c, 0);</span>
 <span class="doccomment">//! # assert_eq!(qubits.get(&amp;0), Some(&amp;false));</span>
 <span class="doccomment">//! # assert_eq!(qubits.get(&amp;1), Some(&amp;true));</span>
 <span class="doccomment">//! # assert_eq!(unsatisfied.len(), 0);</span>
@@ -118,6 +119,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>;
 
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">annealers</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">rand</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">rayon</span>;
 
@@ -131,7 +133,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">TqType</span> <span class="kw">for</span> <span class="ident">T</span> <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">LabelType</span> <span class="op">+</span> <span class="ident">Hash</span> <span class="op">+</span> <span class="ident">Ord</span> {}
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">TcType</span> <span class="kw">for</span> <span class="ident">T</span> <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">LabelType</span> <span class="op">+</span> <span class="ident">Hash</span> <span class="op">+</span> <span class="ident">Ord</span> {}
 
-<span class="kw">mod</span> <span class="ident">anneal</span>;
+<span class="comment">// mod anneal;</span>
 <span class="kw">mod</span> <span class="ident">compiled</span>;
 <span class="kw">mod</span> <span class="ident">expanded</span>;
 <span class="kw">mod</span> <span class="ident">expr</span>;
@@ -144,7 +146,7 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">expr_test</span>() {
-	<span class="kw">let</span> <span class="kw">_</span>: <span class="ident">Expr</span><span class="op">&lt;</span>(), <span class="kw">_</span>, ()<span class="op">&gt;</span> <span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">Expr</span>::<span class="ident">Binary</span>((<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>)) <span class="op">*</span> <span class="number">3</span>;
+	<span class="kw">let</span> <span class="kw">_</span>: <span class="ident">Expr</span><span class="op">&lt;</span>(), <span class="kw">_</span>, (), <span class="ident">i32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">2i32</span> <span class="op">*</span> <span class="ident">Expr</span>::<span class="ident">Binary</span>((<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>)) <span class="op">*</span> <span class="number">3i32</span>;
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "rustqubo";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

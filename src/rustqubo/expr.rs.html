@@ -704,83 +704,52 @@
 <span id="701">701</span>
 <span id="702">702</span>
 <span id="703">703</span>
-<span id="704">704</span>
-<span id="705">705</span>
-<span id="706">706</span>
-<span id="707">707</span>
-<span id="708">708</span>
-<span id="709">709</span>
-<span id="710">710</span>
-<span id="711">711</span>
-<span id="712">712</span>
-<span id="713">713</span>
-<span id="714">714</span>
-<span id="715">715</span>
-<span id="716">716</span>
-<span id="717">717</span>
-<span id="718">718</span>
-<span id="719">719</span>
-<span id="720">720</span>
-<span id="721">721</span>
-<span id="722">722</span>
-<span id="723">723</span>
-<span id="724">724</span>
-<span id="725">725</span>
-<span id="726">726</span>
-<span id="727">727</span>
-<span id="728">728</span>
-<span id="729">729</span>
-<span id="730">730</span>
-<span id="731">731</span>
-<span id="732">732</span>
-<span id="733">733</span>
-<span id="734">734</span>
-<span id="735">735</span>
-<span id="736">736</span>
-<span id="737">737</span>
-<span id="738">738</span>
-<span id="739">739</span>
-<span id="740">740</span>
-<span id="741">741</span>
-<span id="742">742</span>
-<span id="743">743</span>
-<span id="744">744</span>
-<span id="745">745</span>
-<span id="746">746</span>
-<span id="747">747</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">compiled</span>::<span class="ident">CompiledModel</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">Model</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wrapper</span>::<span class="ident">Placeholder</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TcType</span>, <span class="ident">TpType</span>, <span class="ident">TqType</span>};
+<span class="kw">use</span> <span class="ident">annealers</span>::<span class="ident">variable</span>::{<span class="ident">ConvertFrom</span>, <span class="ident">Real</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">BTreeSet</span>, <span class="ident">HashMap</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">MaybeUninit</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">Add</span>, <span class="ident">AddAssign</span>, <span class="ident">BitXor</span>, <span class="ident">Mul</span>, <span class="ident">MulAssign</span>, <span class="ident">Neg</span>, <span class="ident">Sub</span>, <span class="ident">SubAssign</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">Add</span>, <span class="ident">AddAssign</span>, <span class="ident">BitXor</span>, <span class="ident">BitXorAssign</span>, <span class="ident">Mul</span>, <span class="ident">MulAssign</span>, <span class="ident">Neg</span>, <span class="ident">Sub</span>, <span class="ident">SubAssign</span>};
 
+<span class="comment">// TODO: hide the implementation from public</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
 	<span class="ident">Placeholder</span>(<span class="ident">Tp</span>), <span class="comment">// The real value of placeholder must be positive</span>
 	<span class="ident">Add</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
 	<span class="ident">Mul</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
-	<span class="ident">Number</span>(<span class="ident">i32</span>),
-	<span class="ident">Float</span>(<span class="ident">f64</span>),
+	<span class="ident">Number</span>(<span class="ident">R</span>),
+	<span class="comment">// TODO: use annealers_rust::node::{Spin,Binary}</span>
 	<span class="ident">Binary</span>(<span class="ident">Tq</span>), <span class="comment">// Qubit represented with +1, 0</span>
 	<span class="ident">Spin</span>(<span class="ident">Tq</span>),   <span class="comment">// Qubit represented with +1, -1</span>
 	<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="ident">Tc</span>, <span class="ident">expr</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> },
 	<span class="ident">WithPenalty</span> { <span class="ident">expr</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">penalty</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> },
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
+	<span class="self">Self</span>: <span class="ident">Mul</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="self">Self</span><span class="op">&gt;</span>,
 {
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+		<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">0</span>))
+	}
+
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">one</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+		<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">1</span>))
+	}
+
 	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
 	<span class="kw">where</span>
 		<span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>,
@@ -799,15 +768,11 @@
 			<span class="ident">o</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
 		}
 	}
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">feed_dict</span>(<span class="self">self</span>, <span class="ident">dict</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">NumberOrFloat</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">feed_dict</span>(<span class="self">self</span>, <span class="ident">dict</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="kw">match</span> <span class="self">self</span> {
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> {
 				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">dict</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>) {
-					<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="ident">val</span>.<span class="ident">get_number</span>() {
-						<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>)
-					} <span class="kw">else</span> {
-						<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">val</span>.<span class="ident">get_float</span>())
-					}
+					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="kw-2">*</span><span class="ident">val</span>)
 				} <span class="kw">else</span> {
 					<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>)
 				}
@@ -824,48 +789,21 @@
 		}
 	}
 
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_model</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> {
-		<span class="kw">match</span> <span class="self">self</span> {
-			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> {
-				<span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">Placeholder</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>)))
-			}
-			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">lhs</span>.<span class="ident">to_model</span>() <span class="op">+</span> <span class="ident">rhs</span>.<span class="ident">to_model</span>(),
-			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">lhs</span>.<span class="ident">to_model</span>() <span class="op">*</span> <span class="ident">rhs</span>.<span class="ident">to_model</span>(),
-			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Number</span>(<span class="ident">n</span>)),
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Float</span>(<span class="ident">f</span>)),
-			<span class="self">Self</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">lb</span>),
-			<span class="self">Self</span>::<span class="ident">Spin</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">Expr</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>) <span class="op">*</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="number">2</span>) <span class="op">-</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="number">1</span>)).<span class="ident">to_model</span>(),
-			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="ident">lb</span>, <span class="ident">expr</span>: <span class="ident">e</span> } <span class="op">=</span><span class="op">&gt;</span> {
-				<span class="kw">let</span> <span class="ident">ph</span>: <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="op">=</span>
-					<span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">Placeholder</span>::<span class="ident">Constraint</span>(<span class="ident">lb</span>.<span class="ident">clone</span>())));
-				(<span class="ident">e</span>.<span class="ident">clone</span>().<span class="ident">to_model</span>() <span class="op">*</span> <span class="ident">ph</span>.<span class="ident">clone</span>()).<span class="ident">add_constraint</span>(
-					<span class="ident">lb</span>.<span class="ident">clone</span>(),
-					<span class="kw-2">*</span><span class="ident">e</span>,
-					<span class="prelude-val">Some</span>(<span class="ident">Placeholder</span>::<span class="ident">Constraint</span>(<span class="ident">lb</span>)),
-				)
-			}
-			<span class="self">Self</span>::<span class="ident">WithPenalty</span> {
-				<span class="ident">expr</span>: <span class="ident">e</span>,
-				<span class="ident">penalty</span>: <span class="ident">p</span>,
-			} <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">to_model</span>().<span class="ident">add_penalty</span>(<span class="ident">p</span>.<span class="ident">to_model</span>()),
-		}
-	}
-
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">calculate_i</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">map</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span> {
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">calculate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">map</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
 		<span class="kw">match</span> <span class="self">self</span> {
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
 			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-				<span class="kw">if</span> <span class="kw">let</span> (<span class="prelude-val">Some</span>(<span class="ident">lhs</span>), <span class="prelude-val">Some</span>(<span class="ident">rhs</span>)) <span class="op">=</span> (<span class="ident">lhs</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>)) {
+				<span class="kw">if</span> <span class="kw">let</span> (<span class="prelude-val">Some</span>(<span class="ident">lhs</span>), <span class="prelude-val">Some</span>(<span class="ident">rhs</span>)) <span class="op">=</span> (<span class="ident">lhs</span>.<span class="ident">calculate</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate</span>(<span class="ident">map</span>)) {
 					<span class="prelude-val">Some</span>(<span class="ident">lhs</span> <span class="op">+</span> <span class="ident">rhs</span>)
 				} <span class="kw">else</span> {
 					<span class="prelude-val">None</span>
 				}
 			}
-			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> (<span class="ident">lhs</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>)) {
+			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> (<span class="ident">lhs</span>.<span class="ident">calculate</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate</span>(<span class="ident">map</span>)) {
 				(<span class="prelude-val">Some</span>(<span class="ident">lhs</span>), <span class="prelude-val">Some</span>(<span class="ident">rhs</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">lhs</span> <span class="op">*</span> <span class="ident">rhs</span>),
 				(<span class="prelude-val">Some</span>(<span class="ident">e</span>), <span class="prelude-val">None</span>) <span class="op">|</span> (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-					<span class="kw">if</span> <span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-						<span class="prelude-val">Some</span>(<span class="number">0</span>)
+					<span class="kw">if</span> <span class="ident">e</span>.<span class="ident">as_f64</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0.0</span> {
+						<span class="prelude-val">Some</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">0</span>))
 					} <span class="kw">else</span> {
 						<span class="prelude-val">None</span>
 					}
@@ -873,65 +811,58 @@
 				<span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
 			},
 			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">n</span>),
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
 			<span class="self">Self</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>) <span class="op">|</span> <span class="self">Self</span>::<span class="ident">Spin</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> {
 				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">map</span>.<span class="ident">get</span>(<span class="ident">lb</span>) {
 					<span class="kw">if</span> <span class="kw-2">*</span><span class="ident">b</span> {
-						<span class="prelude-val">Some</span>(<span class="number">1</span>)
+						<span class="prelude-val">Some</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">1</span>))
 					} <span class="kw">else</span> {
 						<span class="kw">if</span> <span class="kw">let</span> <span class="self">Self</span>::<span class="ident">Spin</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="self">self</span> {
-							<span class="prelude-val">Some</span>(<span class="op">-</span><span class="number">1</span>)
+							<span class="prelude-val">Some</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="op">-</span><span class="number">1</span>))
 						} <span class="kw">else</span> {
-							<span class="prelude-val">Some</span>(<span class="number">0</span>)
+							<span class="prelude-val">Some</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">0</span>))
 						}
 					}
 				} <span class="kw">else</span> {
 					<span class="prelude-val">None</span>
 				}
 			}
-			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="kw">_</span>, <span class="ident">expr</span>: <span class="ident">e</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>),
+			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="kw">_</span>, <span class="ident">expr</span>: <span class="ident">e</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate</span>(<span class="ident">map</span>),
 			<span class="self">Self</span>::<span class="ident">WithPenalty</span> {
 				<span class="ident">expr</span>: <span class="ident">e</span>,
 				<span class="ident">penalty</span>: <span class="kw">_</span>,
-			} <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>),
+			} <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate</span>(<span class="ident">map</span>),
 		}
 	}
 
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">calculate_f</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">map</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tq</span>, <span class="ident">bool</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
-		<span class="kw">match</span> <span class="self">self</span> {
-			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-				<span class="kw">if</span> <span class="kw">let</span> (<span class="prelude-val">Some</span>(<span class="ident">lhs</span>), <span class="prelude-val">Some</span>(<span class="ident">rhs</span>)) <span class="op">=</span> (<span class="ident">lhs</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>)) {
-					<span class="prelude-val">Some</span>(<span class="ident">lhs</span> <span class="op">+</span> <span class="ident">rhs</span>)
-				} <span class="kw">else</span> {
-					<span class="prelude-val">None</span>
-				}
-			}
-			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> (<span class="ident">lhs</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>), <span class="ident">rhs</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>)) {
-				(<span class="prelude-val">Some</span>(<span class="ident">lhs</span>), <span class="prelude-val">Some</span>(<span class="ident">rhs</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">lhs</span> <span class="op">*</span> <span class="ident">rhs</span>),
-				(<span class="prelude-val">Some</span>(<span class="ident">e</span>), <span class="prelude-val">None</span>) <span class="op">|</span> (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-					<span class="kw">if</span> <span class="ident">e</span>.<span class="ident">abs</span>() <span class="op">&lt;</span> <span class="number">1.0e-6</span> {
-						<span class="prelude-val">Some</span>(<span class="number">0.0</span>)
-					} <span class="kw">else</span> {
-						<span class="prelude-val">None</span>
-					}
-				}
-				<span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-			},
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">f</span>),
-			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="kw">_</span>, <span class="ident">expr</span>: <span class="ident">e</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>),
-			<span class="self">Self</span>::<span class="ident">WithPenalty</span> {
-				<span class="ident">expr</span>: <span class="ident">e</span>,
-				<span class="ident">penalty</span>: <span class="kw">_</span>,
-			} <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">calculate_f</span>(<span class="ident">map</span>),
-			<span class="ident">o</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>.<span class="ident">calculate_i</span>(<span class="ident">map</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span> <span class="kw">as</span> <span class="ident">f64</span>),
-		}
-	}
-
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compile</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> {
+	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compile</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CompiledModel</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> {
 		<span class="self">self</span>.<span class="ident">to_model</span>().<span class="ident">to_compiled</span>().<span class="ident">reduce_order</span>(<span class="number">2</span>)
 	}
 
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">map_label</span><span class="op">&lt;</span><span class="ident">Tpn</span>, <span class="ident">Fp</span>, <span class="ident">Tqn</span>, <span class="ident">Fq</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">fp</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Fp</span>, <span class="ident">fq</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Fq</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tpn</span>, <span class="ident">Tqn</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+	<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span> <span class="comment">// TODO: ?</span>
+	<span class="kw">fn</span> <span class="ident">map_number</span><span class="op">&lt;</span><span class="ident">R2</span>: <span class="ident">ConvertFrom</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R2</span><span class="op">&gt;</span> {
+		<span class="kw">match</span> <span class="self">self</span> {
+			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="op">&lt;</span><span class="ident">R2</span> <span class="kw">as</span> <span class="ident">ConvertFrom</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">convert_from</span>(<span class="ident">n</span>)),
+			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Add</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">a</span>.<span class="ident">map_number</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">b</span>.<span class="ident">map_number</span>())),
+			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">a</span>.<span class="ident">map_number</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">b</span>.<span class="ident">map_number</span>())),
+			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>, <span class="ident">expr</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Constraint</span> {
+				<span class="ident">label</span>,
+				<span class="ident">expr</span>: <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">expr</span>.<span class="ident">map_number</span>()),
+			},
+			<span class="self">Self</span>::<span class="ident">WithPenalty</span> { <span class="ident">expr</span>, <span class="ident">penalty</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">WithPenalty</span> {
+				<span class="ident">expr</span>: <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">expr</span>.<span class="ident">map_number</span>()),
+				<span class="ident">penalty</span>: <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">penalty</span>.<span class="ident">map_number</span>()),
+			},
+			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Placeholder</span>(<span class="ident">a</span>),
+			<span class="self">Self</span>::<span class="ident">Binary</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Binary</span>(<span class="ident">a</span>),
+			<span class="self">Self</span>::<span class="ident">Spin</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Spin</span>(<span class="ident">a</span>),
+		}
+	}
+
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">map_label</span><span class="op">&lt;</span><span class="ident">Tpn</span>, <span class="ident">Fp</span>, <span class="ident">Tqn</span>, <span class="ident">Fq</span><span class="op">&gt;</span>(
+		<span class="self">self</span>,
+		<span class="ident">fp</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Fp</span>,
+		<span class="ident">fq</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Fq</span>,
+	) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tpn</span>, <span class="ident">Tqn</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 	<span class="kw">where</span>
 		<span class="ident">Fp</span>: <span class="ident">FnMut</span>(<span class="ident">Tp</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Tpn</span>,
 		<span class="ident">Fq</span>: <span class="ident">FnMut</span>(<span class="ident">Tq</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Tqn</span>,
@@ -949,7 +880,6 @@
 				<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">rhs</span>.<span class="ident">map_label</span>(<span class="ident">fp</span>, <span class="ident">fq</span>)),
 			),
 			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">n</span>),
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Float</span>(<span class="ident">f</span>),
 			<span class="self">Self</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Binary</span>(<span class="ident">fq</span>(<span class="ident">lb</span>)),
 			<span class="self">Self</span>::<span class="ident">Spin</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Expr</span>::<span class="ident">Spin</span>(<span class="ident">fq</span>(<span class="ident">lb</span>)),
 			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="kw">_</span>, <span class="ident">expr</span>: <span class="kw">_</span> }
@@ -959,125 +889,56 @@
 			} <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;cannot map on Constraint | WithPenalty&quot;</span>),
 		}
 	}
-
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>))
-	}
-
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="self">self</span>.<span class="ident">add</span>(<span class="op">-</span><span class="ident">other</span>)
-	}
-
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">mul</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>))
-	}
-}
-
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_from_qubit</span> {
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="ident">String</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">String</span>);
-		<span class="macro">impl_from_qubit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="ident">String</span>, <span class="ident">String</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
-		<span class="kw">where</span>
-			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
-			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
-		{
-			<span class="attribute">#[<span class="ident">inline</span>]</span>
-			<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">q</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-				<span class="ident">Expr</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>(<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="ident">q</span>))
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_model</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> {
+		<span class="kw">match</span> <span class="self">self</span> {
+			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> {
+				<span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">Placeholder</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>)))
 			}
-		}
-	};
-}
-
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_from_qubit_tuple2</span> {
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="ident">String</span>, <span class="ident">String</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">String</span>, <span class="ident">String</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="ident">String</span>, <span class="ident">String</span>, <span class="ident">String</span>, <span class="ident">String</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="ident">String</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="ident">String</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>:<span class="ident">ty</span>, <span class="ident">String</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="ident">String</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="ident">String</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="ident">String</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>);
-		<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>);
-	};
-	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out1</span>:<span class="ident">ty</span>,<span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out2</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>)<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out2</span>), <span class="ident">Tc</span><span class="op">&gt;</span>
-		<span class="kw">where</span>
-			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
-			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
-		{
-			<span class="attribute">#[<span class="ident">inline</span>]</span>
-			<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">q</span>: (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span>)) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-				<span class="ident">Expr</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">q</span>((
-					<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ1</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out1</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="ident">q</span>.<span class="number">0</span>),
-					<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ2</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">typ_out2</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="ident">q</span>.<span class="number">1</span>),
-				))
+			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">lhs</span>.<span class="ident">to_model</span>() <span class="op">+</span> <span class="ident">rhs</span>.<span class="ident">to_model</span>(),
+			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">lhs</span>.<span class="ident">to_model</span>() <span class="op">*</span> <span class="ident">rhs</span>.<span class="ident">to_model</span>(),
+			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Number</span>(<span class="ident">n</span>)),
+			<span class="self">Self</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">lb</span>),
+			<span class="self">Self</span>::<span class="ident">Spin</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">2</span>)) <span class="op">*</span> (<span class="ident">Expr</span>::<span class="ident">Binary</span>(<span class="ident">lb</span>))
+				<span class="op">-</span> (<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">1</span>))))
+			.<span class="ident">to_model</span>(),
+			<span class="self">Self</span>::<span class="ident">Constraint</span> { <span class="ident">label</span>: <span class="ident">lb</span>, <span class="ident">expr</span>: <span class="ident">e</span> } <span class="op">=</span><span class="op">&gt;</span> {
+				<span class="kw">let</span> <span class="ident">ph</span>: <span class="ident">Model</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="op">=</span>
+					<span class="ident">Model</span>::<span class="ident">from</span>(<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">Placeholder</span>::<span class="ident">Constraint</span>(<span class="ident">lb</span>.<span class="ident">clone</span>())));
+				(<span class="ident">e</span>.<span class="ident">clone</span>().<span class="ident">to_model</span>() <span class="op">*</span> <span class="ident">ph</span>.<span class="ident">clone</span>()).<span class="ident">add_constraint</span>(
+					<span class="ident">lb</span>.<span class="ident">clone</span>(),
+					<span class="kw-2">*</span><span class="ident">e</span>,
+					<span class="prelude-val">Some</span>(<span class="ident">Placeholder</span>::<span class="ident">Constraint</span>(<span class="ident">lb</span>)),
+				)
 			}
+			<span class="self">Self</span>::<span class="ident">WithPenalty</span> {
+				<span class="ident">expr</span>: <span class="ident">e</span>,
+				<span class="ident">penalty</span>: <span class="ident">p</span>,
+			} <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">to_model</span>().<span class="ident">add_penalty</span>(<span class="ident">p</span>.<span class="ident">to_model</span>()),
 		}
-	};
+	}
 }
 
-<span class="macro">impl_from_qubit</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">String</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">String</span>, <span class="ident">String</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">String</span>, <span class="ident">i32</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">i32</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">String</span>, <span class="ident">bool</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">bool</span>);
-<span class="macro">impl_from_qubit_tuple2</span><span class="macro">!</span>(<span class="ident">Binary</span>, <span class="ident">i32</span>, <span class="ident">bool</span>);
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
 	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">f</span>: <span class="ident">f64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="ident">Expr</span>::<span class="ident">Float</span>(<span class="ident">f</span>)
-	}
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
-	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
-	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
-{
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">f</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">f</span>: <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">f</span>)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">from</span>: <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">from</span>: <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="kw">match</span> <span class="ident">from</span> {
 			<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">lb</span>),
 			<span class="ident">StaticExpr</span>::<span class="ident">Add</span>(<span class="kw-2">mut</span> <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1088,7 +949,7 @@
 						<span class="ident">item</span>.<span class="ident">into</span>()
 					}
 				} <span class="kw">else</span> {
-					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="number">0</span>)
+					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">0</span>))
 				}
 			}
 			<span class="ident">StaticExpr</span>::<span class="ident">Mul</span>(<span class="kw-2">mut</span> <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1099,95 +960,172 @@
 						<span class="ident">item</span>.<span class="ident">into</span>()
 					}
 				} <span class="kw">else</span> {
-					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="number">1</span>)
+					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="number">1</span>))
 				}
 			}
 			<span class="ident">StaticExpr</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>),
-			<span class="ident">StaticExpr</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>),
 		}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">Neg</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">Neg</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
 	<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="self">Self</span>;
 	<span class="attribute">#[<span class="ident">inline</span>]</span>
 	<span class="kw">fn</span> <span class="ident">neg</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
-		<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="op">-</span><span class="number">1</span>)), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>))
+		<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="op">-</span><span class="number">1</span>))), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>))
 	}
 }
 
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_binary_op_inner</span> {
-	(<span class="macro-nonterminal">$</span><span class="kw">trait</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">trait</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">Add</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
+	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
+{
+	<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>;
+	<span class="attribute">#[<span class="ident">inline</span>]</span>
+	<span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+		<span class="ident">Expr</span>::<span class="ident">Add</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+	}
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">Sub</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
+	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
+{
+	<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>;
+	<span class="attribute">#[<span class="ident">inline</span>]</span>
+	<span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+		<span class="ident">Expr</span>::<span class="ident">Add</span>(
+			<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()),
+			<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Mul</span>(
+				<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="ident">R</span>::<span class="ident">from_i32</span>(<span class="op">-</span><span class="number">1</span>))),
+				<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()),
+			)),
+		)
+	}
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">Mul</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
+	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
+{
+	<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>;
+	<span class="attribute">#[<span class="ident">inline</span>]</span>
+	<span class="kw">fn</span> <span class="ident">mul</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+		<span class="ident">Expr</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+	}
+}
+
+<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_binary_op</span> {
+	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>: <span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
+		<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>);
+		<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>);
+	};
+	(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span>: <span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
+		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">Add</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>
 		<span class="kw">where</span>
 			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 			<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
 		{
-			<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>;
+			<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>;
 			<span class="attribute">#[<span class="ident">inline</span>]</span>
-			<span class="kw">fn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
-				<span class="ident">Expr</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>(
-					<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Output</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="self">self</span>),
-					<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Output</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="ident">other</span>),
+			<span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+				<span class="ident">Expr</span>::<span class="ident">Add</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+			}
+		}
+
+		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">Sub</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>
+		<span class="kw">where</span>
+			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+			<span class="ident">Tq</span>: <span class="ident">TqType</span>,
+			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+		{
+			<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>;
+			<span class="attribute">#[<span class="ident">inline</span>]</span>
+			<span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+				<span class="ident">Expr</span>::<span class="ident">Add</span>(
+					<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()),
+					<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Mul</span>(
+						<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>::<span class="ident">from_i32</span>(<span class="op">-</span><span class="number">1</span>))),
+						<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()),
+					)),
 				)
+			}
+		}
+
+		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">Mul</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lhs</span>
+		<span class="kw">where</span>
+			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+			<span class="ident">Tq</span>: <span class="ident">TqType</span>,
+			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+		{
+			<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">real</span><span class="op">&gt;</span>;
+			<span class="attribute">#[<span class="ident">inline</span>]</span>
+			<span class="kw">fn</span> <span class="ident">mul</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Output</span> {
+				<span class="ident">Expr</span>::<span class="ident">Mul</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">into</span>()), <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
 			}
 		}
 	};
 }
 
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_binary_op</span> {
-	(<span class="macro-nonterminal">$</span><span class="kw">trait</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>:<span class="ident">ident</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_binary_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="self">Self</span>);
-		<span class="macro">impl_binary_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">i32</span>);
-		<span class="macro">impl_binary_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">f64</span>);
-		<span class="macro">impl_binary_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="ident">i32</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>);
-		<span class="macro">impl_binary_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="ident">f64</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>);
-	};
-}
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">i8</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">i16</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">i32</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">i64</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">i128</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">f32</span>);
+<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">f64</span>);
 
-<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">Add</span>, <span class="ident">add</span>);
-<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">Sub</span>, <span class="ident">sub</span>);
-<span class="macro">impl_binary_op</span><span class="macro">!</span>(<span class="ident">Mul</span>, <span class="ident">mul</span>);
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">BitXor</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">BitXor</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
 	<span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="self">Self</span>;
 	<span class="attribute">#[<span class="ident">inline</span>]</span>
 	<span class="kw">fn</span> <span class="ident">bitxor</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hmlt</span> <span class="op">=</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="number">1</span>);
-		<span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">other</span> {
-			<span class="ident">hmlt</span> <span class="kw-2">*</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">clone</span>();
+		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hmlt</span> <span class="op">=</span> <span class="ident">Expr</span>::<span class="ident">Number</span>(<span class="op">&lt;</span><span class="ident">R</span> <span class="kw">as</span> <span class="ident">Real</span><span class="op">&gt;</span>::<span class="ident">from_i32</span>(<span class="number">1</span>));
+		<span class="kw">if</span> <span class="ident">other</span> <span class="op">&gt;</span> <span class="number">0</span> {
+			<span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">1</span>..<span class="ident">other</span> {
+				<span class="ident">hmlt</span> <span class="op">=</span> <span class="ident">hmlt</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">clone</span>();
+			}
+			<span class="ident">hmlt</span> <span class="op">=</span> <span class="ident">hmlt</span> <span class="op">*</span> <span class="self">self</span>;
 		}
 		<span class="ident">hmlt</span>
 	}
 }
 
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_assign_op_inner</span> {
-	(<span class="macro-nonterminal">$</span><span class="kw">trait</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">trait</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span>
+<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_assign_op</span> {
+	(<span class="macro-nonterminal">$</span><span class="kw">trait</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs_into</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
+		<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">trait</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>
 		<span class="kw">where</span>
 			<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 			<span class="ident">Tq</span>: <span class="ident">TqType</span>,
 			<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+			<span class="ident">R</span>: <span class="ident">Real</span>,
 		{
 			<span class="attribute">#[<span class="ident">inline</span>]</span>
 			<span class="kw">fn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span>) {
 				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">MaybeUninit</span>::<span class="ident">zeroed</span>().<span class="ident">assume_init</span>() };
 				<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">swap</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>);
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outer</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>(
-					<span class="ident">inner</span>,
-					<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs</span> <span class="kw">as</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">into</span>(<span class="ident">other</span>),
-				);
+				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outer</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">rhs_into</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>(<span class="ident">inner</span>, <span class="ident">other</span>.<span class="ident">into</span>());
 				<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">swap</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">outer</span>);
 				<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">forget</span>(<span class="ident">outer</span>);
 			}
@@ -1195,28 +1133,23 @@
 	};
 }
 
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_assign_op</span> {
-	(<span class="macro-nonterminal">$</span><span class="kw">trait</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>:<span class="ident">ident</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		<span class="macro">impl_assign_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>, <span class="self">Self</span>);
-		<span class="macro">impl_assign_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>, <span class="ident">i32</span>);
-		<span class="macro">impl_assign_op_inner</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="kw">trait</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">trait_inner</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fun_inner</span>, <span class="ident">f64</span>);
-	};
-}
-
-<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">AddAssign</span>, <span class="ident">Add</span>, <span class="ident">add_assign</span>, <span class="ident">add</span>);
-<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">SubAssign</span>, <span class="ident">Sub</span>, <span class="ident">sub_assign</span>, <span class="ident">sub</span>);
-<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">MulAssign</span>, <span class="ident">Mul</span>, <span class="ident">mul_assign</span>, <span class="ident">mul</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">AddAssign</span>, <span class="ident">Add</span>, <span class="ident">add_assign</span>, <span class="ident">add</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">SubAssign</span>, <span class="ident">Sub</span>, <span class="ident">sub_assign</span>, <span class="ident">sub</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">MulAssign</span>, <span class="ident">Mul</span>, <span class="ident">mul_assign</span>, <span class="ident">mul</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">AddAssign</span>, <span class="ident">Add</span>, <span class="ident">add_assign</span>, <span class="ident">add</span>, <span class="ident">R</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">SubAssign</span>, <span class="ident">Sub</span>, <span class="ident">sub_assign</span>, <span class="ident">sub</span>, <span class="ident">R</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">MulAssign</span>, <span class="ident">Mul</span>, <span class="ident">mul_assign</span>, <span class="ident">mul</span>, <span class="ident">R</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tq</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span>);
+<span class="macro">impl_assign_op</span><span class="macro">!</span>(<span class="ident">BitXorAssign</span>, <span class="ident">BitXor</span>, <span class="ident">bitxor_assign</span>, <span class="ident">bitxor</span>, <span class="ident">usize</span>, <span class="ident">usize</span>);
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span><span class="op">&gt;</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 {
 	<span class="ident">Placeholder</span>(<span class="ident">Tp</span>),
 	<span class="ident">Add</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
 	<span class="ident">Mul</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
-	<span class="ident">Number</span>(<span class="ident">i32</span>),
-	<span class="ident">Float</span>(<span class="ident">f64</span>),
+	<span class="ident">Number</span>(<span class="ident">R</span>),
 }
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -1226,7 +1159,7 @@
 	<span class="comment">// impl TpType for S {}</span>
 	<span class="comment">// impl crate::LabelType for S {}</span>
 
-	<span class="kw">fn</span> <span class="ident">get_ph</span>(<span class="ident">n</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+	<span class="kw">fn</span> <span class="ident">get_ph</span>(<span class="ident">n</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">i32</span><span class="op">&gt;</span> {
 		<span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">S</span>(<span class="ident">n</span>))
 	}
 
@@ -1246,25 +1179,26 @@
 	)
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
 	<span class="ident">Tc</span>: <span class="ident">TcType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">drop_placeholder</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span>(), <span class="ident">Tc</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">drop_placeholder</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Placeholder</span><span class="op">&lt;</span>(), <span class="ident">Tc</span><span class="op">&gt;</span>, <span class="ident">R</span><span class="op">&gt;</span> {
 		<span class="kw">match</span> <span class="self">self</span> {
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>.<span class="ident">drop_placeholder</span>()),
 			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span>::<span class="ident">Add</span>(<span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">drop_placeholder</span>()).<span class="ident">collect</span>()),
 			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span>::<span class="ident">Mul</span>(<span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">drop_placeholder</span>()).<span class="ident">collect</span>()),
 			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span>::<span class="ident">Number</span>(<span class="ident">a</span>),
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span>::<span class="ident">Float</span>(<span class="ident">a</span>),
 		}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span> <span class="ident">StaticExpr</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span>
 <span class="kw">where</span>
 	<span class="ident">Tp</span>: <span class="ident">TpType</span>,
+	<span class="ident">R</span>: <span class="ident">Real</span>,
 {
 	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_placeholders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Tp</span><span class="op">&gt;</span> {
 		<span class="kw">match</span> <span class="self">self</span> {
@@ -1318,46 +1252,32 @@
 		} <span class="kw">else</span> {
 			<span class="bool-val">false</span>
 		};
-		<span class="kw">match</span> <span class="self">self</span> {
-			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">v</span>) <span class="op">|</span> <span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fval</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nval</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_add</span> { <span class="number">0i32</span> } <span class="kw">else</span> { <span class="number">1i32</span> };
+		<span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
+			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="self">Self</span>::<span class="ident">Mul</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
 				<span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_add</span> {
-					<span class="self">Self</span>::<span class="ident">expand_add</span>(<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">v</span>))
+					<span class="self">Self</span>::<span class="ident">expand_add</span>(<span class="self">self</span>)
 				} <span class="kw">else</span> {
-					<span class="self">Self</span>::<span class="ident">expand_mul</span>(<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>))
+					<span class="self">Self</span>::<span class="ident">expand_mul</span>(<span class="self">self</span>)
 				};
+				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">val</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>
 					.<span class="ident">into_iter</span>()
 					.<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">exp</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">exp</span>.<span class="ident">simplify</span>() {
 						<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> {
-							<span class="kw">if</span> <span class="ident">is_add</span> {
-								<span class="ident">nval</span> <span class="op">+</span><span class="op">=</span> <span class="ident">n</span>;
+							<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">val</span> {
+								<span class="ident">val</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw">if</span> <span class="ident">is_add</span> { <span class="ident">v</span> <span class="op">+</span> <span class="ident">n</span> } <span class="kw">else</span> { <span class="ident">v</span> <span class="op">*</span> <span class="ident">n</span> });
 							} <span class="kw">else</span> {
-								<span class="ident">nval</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">n</span>;
+								<span class="ident">val</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>);
 							}
-							<span class="prelude-val">None</span>
-						}
-						<span class="self">Self</span>::<span class="ident">Float</span>(<span class="kw-2">mut</span> <span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> {
-							<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ff</span>) <span class="op">=</span> <span class="ident">fval</span> {
-								<span class="kw">if</span> <span class="ident">is_add</span> {
-									<span class="ident">f</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ff</span>;
-								} <span class="kw">else</span> {
-									<span class="ident">f</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">ff</span>;
-								}
-							}
-							<span class="ident">fval</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">f</span>);
 							<span class="prelude-val">None</span>
 						}
 						<span class="ident">o</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">o</span>),
 					})
 					.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">ff</span>) <span class="op">=</span> <span class="ident">fval</span> {
-					<span class="ident">ff</span> <span class="op">+</span><span class="op">=</span> <span class="ident">nval</span> <span class="kw">as</span> <span class="ident">f64</span>;
-					<span class="ident">v</span>.<span class="ident">push</span>(<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">ff</span>));
-				} <span class="kw">else</span> <span class="kw">if</span> <span class="ident">nval</span> <span class="op">!</span><span class="op">=</span> <span class="kw">if</span> <span class="ident">is_add</span> { <span class="number">0</span> } <span class="kw">else</span> { <span class="number">1</span> } {
-					<span class="ident">v</span>.<span class="ident">push</span>(<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">nval</span>));
+				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">val</span> {
+					<span class="ident">v</span>.<span class="ident">push</span>(<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">val</span>));
 				}
+				<span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;v  {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">v</span>);
 				<span class="kw">if</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
 					<span class="ident">v</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>()
 				} <span class="kw">else</span> <span class="kw">if</span> <span class="ident">is_add</span> {
@@ -1366,7 +1286,7 @@
 					<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>)
 				}
 			}
-			<span class="ident">o</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
+			<span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>,
 		}
 	}
 
@@ -1403,21 +1323,16 @@
 				}
 				<span class="ident">ret</span>
 			}
-			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">n</span> <span class="op">&gt;</span> <span class="number">0</span>),
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">f</span> <span class="op">&gt;</span> <span class="number">0.0</span>),
+			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>.<span class="ident">as_f64</span>() <span class="op">&gt;</span> <span class="number">0.0</span>),
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
 		}
 	}
 
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">feed_dict</span>(<span class="self">self</span>, <span class="ident">dict</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">NumberOrFloat</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">feed_dict</span>(<span class="self">self</span>, <span class="ident">dict</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Tp</span>, <span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
 		<span class="kw">match</span> <span class="self">self</span> {
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> {
 				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">dict</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>) {
-					<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="ident">val</span>.<span class="ident">get_number</span>() {
-						<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>)
-					} <span class="kw">else</span> {
-						<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">val</span>.<span class="ident">get_float</span>())
-					}
+					<span class="self">Self</span>::<span class="ident">Number</span>(<span class="kw-2">*</span><span class="ident">val</span>)
 				} <span class="kw">else</span> {
 					<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>)
 				}
@@ -1428,73 +1343,70 @@
 		}
 	}
 
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">calculate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ph_feedback</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span>
+	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">calculate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ph_feedback</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">R</span>
 	<span class="kw">where</span>
-		<span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Tp</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span>,
+		<span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Tp</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">R</span>,
 	{
 		<span class="kw">match</span> <span class="self">self</span> {
 			<span class="self">Self</span>::<span class="ident">Placeholder</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> {
 				<span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">ph_feedback</span>(<span class="ident">p</span>);
-				<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">f</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0.0</span>);
+				<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">f</span>.<span class="ident">as_f64</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">0.0</span>);
 				<span class="ident">f</span>
 			}
 			<span class="self">Self</span>::<span class="ident">Add</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">calculate</span>(<span class="ident">ph_feedback</span>)).<span class="ident">sum</span>(),
-			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>
-				.<span class="ident">iter</span>()
-				.<span class="ident">fold</span>(<span class="number">1.0</span>, <span class="op">|</span><span class="ident">f</span>, <span class="ident">item</span><span class="op">|</span> <span class="ident">f</span> <span class="op">*</span> <span class="ident">item</span>.<span class="ident">calculate</span>(<span class="ident">ph_feedback</span>)),
-			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">n</span> <span class="kw">as</span> <span class="ident">f64</span>,
-			<span class="self">Self</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">f</span>,
+			<span class="self">Self</span>::<span class="ident">Mul</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">calculate</span>(<span class="ident">ph_feedback</span>)).<span class="ident">product</span>(),
+			<span class="self">Self</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">n</span>,
 		}
 	}
 }
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">NumberOrFloatInner</span> {
-	<span class="ident">Number</span>(<span class="ident">i32</span>),
-	<span class="ident">Float</span>(<span class="ident">f64</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NumberOrFloat</span>(<span class="ident">NumberOrFloatInner</span>);
-
-<span class="kw">impl</span> <span class="ident">NumberOrFloat</span> {
-	<span class="kw">fn</span> <span class="ident">get_number</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span> {
-		<span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-			<span class="ident">NumberOrFloatInner</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>),
-			<span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-		}
-	}
-
-	<span class="kw">fn</span> <span class="ident">get_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span> {
-		<span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-			<span class="ident">NumberOrFloatInner</span>::<span class="ident">Number</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">f64</span>,
-			<span class="ident">NumberOrFloatInner</span>::<span class="ident">Float</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-		}
-	}
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NumberOrFloat</span> {
-	<span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="self">Self</span>(<span class="ident">NumberOrFloatInner</span>::<span class="ident">Number</span>(<span class="number">0</span>))
-	}
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">NumberOrFloat</span> {
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">i</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">0</span> {
-			<span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Placeholder value must be positive.&quot;</span>);
-		}
-		<span class="self">Self</span>(<span class="ident">NumberOrFloatInner</span>::<span class="ident">Number</span>(<span class="ident">i</span>))
-	}
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">NumberOrFloat</span> {
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">f</span>: <span class="ident">f64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-		<span class="kw">if</span> <span class="ident">f</span> <span class="op">&lt;</span> <span class="number">0.0</span> {
-			<span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Placeholder value must be positive.&quot;</span>);
-		}
-		<span class="self">Self</span>(<span class="ident">NumberOrFloatInner</span>::<span class="ident">Float</span>(<span class="ident">f</span>))
-	}
-}
+<span class="comment">//</span>
+<span class="comment">// #[derive(Debug, Copy, Clone)]</span>
+<span class="comment">// enum NumberOrFloatInner {</span>
+<span class="comment">// 	Number(i32),</span>
+<span class="comment">// 	Float(f64),</span>
+<span class="comment">// }</span>
+<span class="comment">//</span>
+<span class="comment">// #[derive(Debug, Copy, Clone)]</span>
+<span class="comment">// pub struct NumberOrFloat(NumberOrFloatInner);</span>
+<span class="comment">//</span>
+<span class="comment">// impl NumberOrFloat {</span>
+<span class="comment">// 	fn get_number(&amp;self) -&gt; Option&lt;i32&gt; {</span>
+<span class="comment">// 		match self.0 {</span>
+<span class="comment">// 			NumberOrFloatInner::Number(n) =&gt; Some(n),</span>
+<span class="comment">// 			_ =&gt; None,</span>
+<span class="comment">// 		}</span>
+<span class="comment">// 	}</span>
+<span class="comment">//</span>
+<span class="comment">// 	fn get_float(&amp;self) -&gt; f64 {</span>
+<span class="comment">// 		match self.0 {</span>
+<span class="comment">// 			NumberOrFloatInner::Number(n) =&gt; n as f64,</span>
+<span class="comment">// 			NumberOrFloatInner::Float(f) =&gt; f,</span>
+<span class="comment">// 		}</span>
+<span class="comment">// 	}</span>
+<span class="comment">// }</span>
+<span class="comment">//</span>
+<span class="comment">// impl Default for NumberOrFloat {</span>
+<span class="comment">// 	fn default() -&gt; Self {</span>
+<span class="comment">// 		Self(NumberOrFloatInner::Number(0))</span>
+<span class="comment">// 	}</span>
+<span class="comment">// }</span>
+<span class="comment">//</span>
+<span class="comment">// impl From&lt;i32&gt; for NumberOrFloat {</span>
+<span class="comment">// 	fn from(i: i32) -&gt; Self {</span>
+<span class="comment">// 		if i &lt; 0 {</span>
+<span class="comment">// 			panic!(&quot;Placeholder value must be positive.&quot;);</span>
+<span class="comment">// 		}</span>
+<span class="comment">// 		Self(NumberOrFloatInner::Number(i))</span>
+<span class="comment">// 	}</span>
+<span class="comment">// }</span>
+<span class="comment">//</span>
+<span class="comment">// impl From&lt;f64&gt; for NumberOrFloat {</span>
+<span class="comment">// 	fn from(f: f64) -&gt; Self {</span>
+<span class="comment">// 		if f &lt; 0.0 {</span>
+<span class="comment">// 			panic!(&quot;Placeholder value must be positive.&quot;);</span>
+<span class="comment">// 		}</span>
+<span class="comment">// 		Self(NumberOrFloatInner::Float(f))</span>
+<span class="comment">// 	}</span>
+<span class="comment">// }</span>
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "rustqubo";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
