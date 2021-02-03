@@ -8,5 +8,5 @@ edition = "2018"
 [dependencies]
 rand = {version = "0.7.3", features = ["small_rng"]}
 rayon = "1.5.0"
-annealers = { path = "../annealers_rust/src/annealers" }
-classical_solver = { path = "../annealers_rust/src/classical_solver" }
+annealers = { git = "https://github.com/SpoonQ/annealers_rust.git", branch = "main" }
+classical_solver = { git = "https://github.com/SpoonQ/annealers_rust.git", branch = "main" }
