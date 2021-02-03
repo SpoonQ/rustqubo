@@ -61,6 +61,7 @@ mod compiled;
 mod expanded;
 mod expr;
 mod model;
+pub mod solution;
 pub mod solve;
 mod util;
 mod wrapper;
