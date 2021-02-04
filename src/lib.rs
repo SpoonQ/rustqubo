@@ -14,8 +14,8 @@
 //! let (c, qubits) = solver.solve().unwrap();
 //! // displays -5.0, {"a": false, "b": false}
 //! println!("{}, {:?}", &c, &qubits);
-//! # assert_eq!(qubits.get(&"a"), Some(&false));
-//! # assert_eq!(qubits.get(&"b"), Some(&false));
+//! # assert_eq!(qubits.get(&"a"), Some(false));
+//! # assert_eq!(qubits.get(&"b"), Some(false));
 //! # assert_eq!(c, -5);
 //! ```
 //!
@@ -34,8 +34,8 @@
 //! // displays 0, {0: false, 1: true}, []
 //! println!("{}, {:?}, {:?}", &c, &qubits, &unsatisfied);
 //! # assert_eq!(c, 0);
-//! # assert_eq!(qubits.get(&0), Some(&false));
-//! # assert_eq!(qubits.get(&1), Some(&true));
+//! # assert_eq!(qubits.get(&0), Some(false));
+//! # assert_eq!(qubits.get(&1), Some(true));
 //! # assert_eq!(unsatisfied.len(), 0);
 //! ```
 use std::cmp::Ord;

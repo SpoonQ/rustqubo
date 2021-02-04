@@ -65,8 +65,8 @@ fn test() {
 	let exp = -10_i32 * Expr::Binary(1) + 5_i32 * Expr::Binary(2) + 12_i32;
 	let compiled = exp.compile();
 	let solver = SimpleSolver::new(&compiled);
-	let (c, qubits) = solver.solve().unwrap();
-	assert_eq!(*qubits.get(&1).unwrap(), true);
-	assert_eq!(*qubits.get(&2).unwrap(), false);
+	let (c, sol) = solver.solve().unwrap();
+	assert_eq!(sol.get(&1).unwrap(), true);
+	assert_eq!(sol.get(&2).unwrap(), false);
 	assert_eq!(c, 2);
 }
