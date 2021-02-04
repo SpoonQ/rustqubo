@@ -74,6 +74,7 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
+<span id="74">74</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! RustQUBO is a powerful library to create QUBO from polynomial expressions</span>
 <span class="doccomment">//! with constraints and placeholders.</span>
@@ -91,8 +92,8 @@
 <span class="doccomment">//! let (c, qubits) = solver.solve().unwrap();</span>
 <span class="doccomment">//! // displays -5.0, {&quot;a&quot;: false, &quot;b&quot;: false}</span>
 <span class="doccomment">//! println!(&quot;{}, {:?}&quot;, &amp;c, &amp;qubits);</span>
-<span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;a&quot;), Some(&amp;false));</span>
-<span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;b&quot;), Some(&amp;false));</span>
+<span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;a&quot;), Some(false));</span>
+<span class="doccomment">//! # assert_eq!(qubits.get(&amp;&quot;b&quot;), Some(false));</span>
 <span class="doccomment">//! # assert_eq!(c, -5);</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
@@ -111,8 +112,8 @@
 <span class="doccomment">//! // displays 0, {0: false, 1: true}, []</span>
 <span class="doccomment">//! println!(&quot;{}, {:?}, {:?}&quot;, &amp;c, &amp;qubits, &amp;unsatisfied);</span>
 <span class="doccomment">//! # assert_eq!(c, 0);</span>
-<span class="doccomment">//! # assert_eq!(qubits.get(&amp;0), Some(&amp;false));</span>
-<span class="doccomment">//! # assert_eq!(qubits.get(&amp;1), Some(&amp;true));</span>
+<span class="doccomment">//! # assert_eq!(qubits.get(&amp;0), Some(false));</span>
+<span class="doccomment">//! # assert_eq!(qubits.get(&amp;1), Some(true));</span>
 <span class="doccomment">//! # assert_eq!(unsatisfied.len(), 0);</span>
 <span class="doccomment">//! ```</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span>;
@@ -138,6 +139,7 @@
 <span class="kw">mod</span> <span class="ident">expanded</span>;
 <span class="kw">mod</span> <span class="ident">expr</span>;
 <span class="kw">mod</span> <span class="ident">model</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">solution</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">solve</span>;
 <span class="kw">mod</span> <span class="ident">util</span>;
 <span class="kw">mod</span> <span class="ident">wrapper</span>;
