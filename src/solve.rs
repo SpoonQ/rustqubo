@@ -1,6 +1,7 @@
 extern crate classical_solver;
 
 use crate::compiled::CompiledModel;
+use crate::solution::SolutionView;
 use crate::wrapper::{Placeholder, Qubit};
 use crate::{TcType, TqType};
 use annealers::model::{FixedSingleQuadricModel, SingleModelView};
@@ -101,7 +102,7 @@ where
 	pub fn solve(
 		&self,
 	) -> Result<
-		(R, HashMap<&Tq, bool>),
+		(R, SolutionView<Tq, R>),
 		<T as SolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		// Drop constraint missing information
@@ -125,11 +126,23 @@ where
 	pub fn solve_with_constraints(
 		&self,
 	) -> Result<
-		(R, HashMap<&Tq, bool>, Vec<&Tc>),
+		(R, SolutionView<Tq, R>, Vec<&Tc>),
 		<T as SolverGenerator<'static, FixedSingleQuadricModel<Binary<R>>>>::ErrorType,
 	> {
 		let ph = self.model.get_placeholders();
 		let mut ret = None;
+		let qubit_map: HashMap<Tq, usize> = self
+			.qubits
+			.iter()
+			.enumerate()
+			.filter_map(|(i, q)| {
+				if let Qubit::Qubit(q) = q {
+					Some((q.clone(), i))
+				} else {
+					None
+				}
+			})
+			.collect();
 		for _ in 0..self.iterations {
 			let mut phdict: HashMap<&Placeholder<(), Tc>, usize> =
 				ph.iter().map(|p| (*p, 10)).collect();
@@ -197,15 +210,7 @@ where
 				let is_satisfied = constraint_labels.len() == 0;
 				ret = Some((
 					energy + c,
-					ans.into_iter()
-						.filter_map(|(q, b)| {
-							if let Qubit::Qubit(q) = q {
-								Some((q, b))
-							} else {
-								None
-							}
-						})
-						.collect(),
+					SolutionView::new(sol.with_local_field(&model), qubit_map.clone()),
 					constraint_labels,
 				));
 				if is_satisfied {

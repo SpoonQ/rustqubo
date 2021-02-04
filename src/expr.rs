@@ -570,7 +570,6 @@ where
 				if let Some(val) = val {
 					v.push(Self::Number(val));
 				}
-				println!("v  {:?}", &v);
 				if v.len() == 1 {
 					v.pop().unwrap()
 				} else if is_add {
